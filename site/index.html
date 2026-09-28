@@ -51,7 +51,7 @@
   .cam { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; cursor: pointer; }
   .cam:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
   .cam.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-  .note { border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  .note { margin-bottom: 10px; border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 6%, var(--panel));
           border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--muted); }
   .note b { color: var(--ink); } .note a { color: var(--accent); }
   .cam h4 { margin: 0 0 6px; font-size: 13px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -135,7 +135,7 @@
       <input id="camq" type="search" placeholder="Search, e.g. realsense, zed, 2.2 mm" autocomplete="off">
       <div class="hint" id="camhint"></div>
     </div>
-    <div class="tabbody"><div id="camlist"></div>
+    <div class="tabbody">
       <div class="note">
         <b>Only 5 cameras are shown here</b>: the simulator's pinhole and four of the cameras in the
         TwinRobo catalog. The full catalog and the SDK are in the main repository,
@@ -146,6 +146,7 @@
         <a href="https://twinrobo.github.io/TwinRobo-Core/partners/" target="_blank" rel="noopener">camera partners</a>
         · <a href="https://github.com/TwinRobo/TwinRobo-Core/issues/new?template=camera_partner.md" target="_blank" rel="noopener">partner inquiry</a>.
       </div>
+      <div id="camlist"></div>
     </div>
   </aside>
   <section class="imgs" id="imgs">
