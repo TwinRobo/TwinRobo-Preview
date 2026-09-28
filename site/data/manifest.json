@@ -1,0 +1,67 @@
+{
+ "scenes": [
+  {
+   "id": "libero-spatial-cookie-box",
+   "simulator": "libero",
+   "run": {
+    "id": "pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate_demo/demo_0",
+    "path": "/home/shij0c/.robopp/datasets/libero/libero_spatial/pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate_demo.hdf5",
+    "suite": "libero_spatial",
+    "task_index": null,
+    "instruction": "pick up the black bowl next to the cookie box and place it on the plate",
+    "num_frames": 123,
+    "success": true,
+    "policy": "training demo",
+    "created_at": null,
+    "supported": true,
+    "reason": "",
+    "cameras": [
+     "agentview",
+     "robot0_eye_in_hand"
+    ],
+    "kind": "demo",
+    "demo": "demo_0",
+    "task": "pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate",
+    "robot": "Panda",
+    "bddl": "libero/libero/bddl_files/libero_spatial/pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate.bddl",
+    "simulator": "libero",
+    "scene_label": null
+   },
+   "robot": "Panda",
+   "num_frames": 123,
+   "fps": 20
+  },
+  {
+   "id": "robocasa-counter-to-cabinet",
+   "simulator": "robocasa",
+   "run": {
+    "id": "robocasa/PickPlaceCounterToCabinet/20250819/episode_000000",
+    "path": "/home/shij0c/.robojev/demos/v1.0/pretrain/atomic/PickPlaceCounterToCabinet/20250819/lerobot",
+    "suite": "robocasa_atomic",
+    "task_index": null,
+    "instruction": "Pick the cereal from the counter and place it in the cabinet.",
+    "num_frames": 232,
+    "success": true,
+    "policy": "human demo",
+    "created_at": null,
+    "supported": true,
+    "reason": "",
+    "cameras": [
+     "robot0_agentview_left",
+     "robot0_agentview_right",
+     "robot0_eye_in_hand"
+    ],
+    "kind": "demo",
+    "demo": "episode_000000",
+    "task": "PickPlaceCounterToCabinet",
+    "robot": "PandaOmron",
+    "bddl": null,
+    "simulator": "robocasa",
+    "scene_label": "Pick place counter to cabinet"
+   },
+   "robot": "PandaOmron",
+   "num_frames": 232,
+   "fps": 20
+  }
+ ]
+}

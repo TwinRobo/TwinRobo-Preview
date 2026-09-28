@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TwinRobo Preview</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+} }
+</script>
+<style>
+  :root {
+    --bg: #eef0f2; --panel: #ffffff; --ink: #1c1f23; --muted: #69707a; --line: #dfe2e6; --chip: #f0f2f5;
+    --accent: #2f6fdf; --ok: #1f8a4c; --bad: #c2412d; --warn: #b7791f; --stage: #2a2e35;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 13px;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141619; --panel: #1c1f23; --ink: #e6e8eb; --muted: #9aa1ab; --line: #2d3238; --chip: #262a30; --stage: #202329; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 14px; margin: 0; font-weight: 650; white-space: nowrap; }
+  header .sub { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header a { color: var(--accent); text-decoration: none; margin-left: auto; font-size: 12px; white-space: nowrap; }
+  .selbar { flex: none; display: grid; gap: 6px; padding: 10px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .selbar label { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+  .selbar select { width: 100%; min-width: 0; }
+  .stage3d { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .pill { padding: 2px 10px; border-radius: 999px; background: var(--chip); color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
+  .pill.err { color: var(--bad); }
+  button, select, input { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; }
+  button { cursor: pointer; }
+  button:disabled, select:disabled { opacity: .5; cursor: default; }
+  .app { flex: 1; display: grid; grid-template-columns: 330px minmax(0, 1.8fr) minmax(300px, 1fr); grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+  .app > .left { grid-row: 1 / 3; }
+  .app > .timeline { grid-column: 2 / 4; }
+  @media (max-width: 1300px) { .app { grid-template-columns: 290px minmax(0, 1.5fr) minmax(260px, 1fr); } }
+
+  /* Left: camera list (applied to the wrist camera) */
+  .left { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .lhead { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+  .lhead h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .lhead input { width: 100%; }
+  .tabbody { flex: 1; overflow: auto; padding: 12px; background: var(--bg); }
+  .cam { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; cursor: pointer; }
+  .cam:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+  .cam.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .cam h4 { margin: 0 0 6px; font-size: 13px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .cam dl { display: grid; grid-template-columns: 92px 1fr; gap: 3px 10px; margin: 0; font-size: 12px; }
+  .cam dt { color: var(--muted); } .cam dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--chip); color: var(--muted); font-weight: 400; }
+  .badge.on { background: var(--accent); color: #fff; }
+
+  /* Image column */
+  .imgs { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; background: var(--bg); border-right: 1px solid var(--line); padding: 10px 12px 12px; gap: 8px; }
+  .imghead, .thumbs, #lensfacts { flex: none; }
+  .imghead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .imghead .title { font-weight: 650; font-size: 14px; display: flex; align-items: center; gap: 7px; }
+  .meta { color: var(--muted); font-weight: 400; }
+  .views { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border-radius: 999px; padding: 2px 9px; font-size: 12px; background: var(--chip); border-color: transparent; }
+  .chip.on { background: var(--accent); color: #fff; }
+  .methodbar { flex: none; justify-content: center; align-items: center; }
+  .lensfacts { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .imgmain { position: relative; display: grid; gap: 8px; justify-content: center; }
+  .fig { margin: 0; min-width: 0; }
+  .fig .frame { position: relative; background: #0b0c0e; border-radius: 8px; overflow: hidden; line-height: 0; min-height: 80px; }
+  .fig .frame video { display: block; width: 100%; height: auto; }
+  .fig .frame .wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #aab0b8; font-size: 12px; line-height: 1.4; text-align: center; padding: 10px; }
+  .fig .cap { position: absolute; left: 8px; top: 8px; line-height: 1.3; font-size: 11px; background: rgba(0,0,0,.55); color: #fff; padding: 1px 7px; border-radius: 5px; }
+  .imgs > .thumbs { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+  .thumbs { display: flex; gap: 8px; overflow-x: auto; }
+  .thumbwrap { flex: none; width: 170px; display: flex; flex-direction: column; gap: 4px; }
+  .thumb { width: 100%; padding: 0; border: 2px solid transparent; border-radius: 8px; background: var(--panel); overflow: hidden; text-align: left; position: relative; }
+  .thumb.on { border-color: var(--accent); }
+  .thumb video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #0b0c0e; }
+  .thumb > span { display: flex; gap: 5px; align-items: center; padding: 4px 6px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thumb .load { position: absolute; right: 4px; top: 4px; font-size: 10px; color: #fff; background: rgba(0,0,0,.6); padding: 1px 5px; border-radius: 4px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .hint { color: var(--muted); font-size: 12px; line-height: 1.45; }
+  @media (max-width: 1000px) { .app { grid-template-columns: 1fr; grid-template-rows: auto auto 50vh auto; overflow: auto; } .app > .left, .app > .timeline { grid-row: auto; grid-column: auto; } .left { max-height: 45vh; } body { overflow: auto; } }
+
+  /* Right: 3D stage */
+  .stage { position: relative; background: var(--stage); min-height: 0; display: flex; flex-direction: column; }
+  #three { flex: 1; min-height: 0; position: relative; }
+  #three canvas { display: block; width: 100%; height: 100%; }
+  .overlay { position: absolute; left: 12px; top: 12px; right: 200px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+  .legend .it { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .legend { max-width: 100%; }
+  .overlay > * { pointer-events: auto; }
+  .legend { background: rgba(20,22,26,.72); color: #e8eaed; border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.6; }
+  .legend .it { display: flex; gap: 7px; align-items: center; cursor: pointer; }
+  .legend .it.on { font-weight: 650; }
+  .tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+  .tools button { background: rgba(20,22,26,.72); color: #e8eaed; border-color: transparent; }
+  .tools button.on { background: var(--accent); }
+  .scene-progress { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+  .scene-progress__track { height: 3px; overflow: hidden; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .scene-progress__sweep { display: block; height: 100%; width: 100%; will-change: transform; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--accent) 55%, transparent) 35%, #7fb0ff 50%, color-mix(in srgb, var(--accent) 55%, transparent) 65%, transparent 100%);
+    animation: scene-progress-sweep 1200ms linear infinite; }
+  @keyframes scene-progress-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .scene-progress__note { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); padding: 2px 9px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12); background: rgba(20,22,26,.8); color: #c9cdd3; font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.4; white-space: nowrap; }
+  .scene-progress__note:empty { display: none; }
+  @media (prefers-reduced-motion: reduce) { .scene-progress__sweep { animation: none; transform: none; background: color-mix(in srgb, var(--accent) 45%, transparent); } }
+  .empty3d { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #aab0b8; font-size: 14px; text-align: center; padding: 20px; }
+  .timeline { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+  .timeline .track { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .timeline input[type=range] { width: 100%; margin: 0; }
+  .timeline canvas { width: 100%; height: 3px; display: block; }
+  .timeline .meta { font-variant-numeric: tabular-nums; min-width: 110px; text-align: right; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TwinRobo Preview</h1>
+  <span class="sub">Robot demos replayed through real cameras' optics · precomputed with TwinRobo Studio</span>
+  <span class="pill err" id="status" hidden></span>
+  <a href="https://twinrobo.github.io/TwinRobo-Core/" target="_blank" rel="noopener">TwinRobo docs ↗</a>
+</header>
+<div class="app">
+  <aside class="left">
+    <div class="lhead">
+      <h2>Cameras · on the wrist</h2>
+      <input id="camq" type="search" placeholder="Search, e.g. realsense, zed, 2.2 mm" autocomplete="off">
+      <div class="hint" id="camhint"></div>
+    </div>
+    <div class="tabbody" id="camlist"></div>
+  </aside>
+  <section class="imgs" id="imgs">
+    <div class="imghead">
+      <div class="title"><span class="dot" id="imgdot"></span><span id="imgcam">No camera</span><span class="meta" id="imgpreset"></span></div>
+      <div class="views" id="views">
+        <button class="chip" data-v="image">Image</button>
+        <button class="chip" data-v="diff" title="|camera − pinhole| × 10 (same view)">Difference vs pinhole</button>
+        <button class="chip" data-v="depth" title="The depth map this camera outputs (log scale, near = red)">Depth</button>
+      </div>
+    </div>
+    <div class="imgmain" id="imgmain"><div class="hint" style="padding:40px;text-align:center">Loading…</div></div>
+    <div class="views methodbar" id="methods" title="TwinRobo's rendering method for this camera">
+        <span class="meta" style="align-self:center;font-size:12px">Rendering</span>
+        <button class="chip" data-m="psf" title="The simulator's pinhole render blurred by the lens' point-spread functions, then distorted (fast, 2.5D)">PSF</button>
+        <button class="chip" data-m="pupil" title="One view per cell of the lens' entrance pupil; every traced lens ray looks up its view (occlusion-aware blur)">Pupil raster</button>
+        <button class="chip" data-m="raycast" title="Every lens ray is cast into the scene's triangles (exact visibility)">Ray cast</button>
+        <span class="meta" id="methodhint" style="align-self:center;font-size:12px">← pick a camera on the left</span>
+      </div>
+    <div id="lensfacts" class="lensfacts"></div>
+    <div class="thumbs" id="thumbs"></div>
+  </section>
+  <section class="stage">
+    <div class="selbar">
+      <label>Dataset <select id="datasetpick" title="Dataset: each has one precomputed scene"></select></label>
+      <label>Scene <select id="taskpick" disabled></select></label>
+      <label>Robot <select id="robotpick" disabled></select></label>
+      <label>Demo <select id="movepick" disabled></select></label>
+    </div>
+    <div class="stage3d">
+      <div id="three"><div class="empty3d" id="empty3d">3D scene appears here</div></div>
+      <div class="scene-progress" id="loading3d" hidden>
+        <div class="scene-progress__track"><span class="scene-progress__sweep" aria-hidden="true"></span></div>
+        <span class="scene-progress__note" id="loadmsg" role="status" aria-live="polite"></span>
+      </div>
+      <div class="overlay"><div class="legend" id="legend" hidden></div></div>
+      <div class="tools">
+        <button id="lookthrough" title="View the scene through the selected camera">Look through</button>
+        <button id="freeview" title="Orbit view">Free view</button>
+      </div>
+    </div>
+  </section>
+  <div class="timeline">
+    <button id="prev" title="Previous frame (←)">◀</button>
+    <button id="play" style="min-width:110px">Play</button>
+    <button id="next" title="Next frame (→)">▶</button>
+    <div class="track"><input type="range" id="frame" min="0" max="0" value="0"><canvas id="buffered"></canvas></div>
+    <select id="speed" title="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+    <span class="meta" id="flabel">–</span>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const $ = (s, el = document) => el.querySelector(s);
+const COLORS = ["#ff9f1c", "#2ec4b6", "#e71d73", "#8f6bff", "#4cc9f0", "#9bd13c"];
+const PRETTY = { robot0_agentview_left: "agentview L", robot0_agentview_right: "agentview R", robot0_agentview_center: "agentview", robot0_frontview: "front view", robot0_eye_in_hand: "wrist", robot0_wrist_L: "wrist L", robot0_wrist_R: "wrist R", robot0_mast: "mast" };
+const nice = (c) => PRETTY[c] ?? c;
+const DATA = "data/";
+
+let MANIFEST = null, META = null, SCENE = null, POSES = null;
+let TABS = [], ACTIVE = null;
+const CONFIG = {}, VIEW = {}, METHOD = {};  // camera -> config id, view, rendering method
+
+function setStatus(t) { const s = $("#status"); s.textContent = t; s.title = t; s.hidden = !t; }
+async function json(path) {
+  const r = await fetch(path, { cache: "no-cache" });  // revalidate: the data is rebaked in place
+  if (!r.ok) throw new Error(`${path}: ${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+// ---------------------------------------------------------------- streams (buffered videos)
+// Every (camera, config, view) is one H.264 video of the whole demo. It is fetched in full
+// (with progress) before it is shown or played; the blob then seeks and plays locally.
+const BLOBS = new Map(), LOADING = new Map(), PROGRESS = new Map();
+const cfgOf = (id) => META.configs.find(c => c.id === id);
+// A stream: one camera config rendered with one method (PSF streams are keyed by the config alone).
+const streamKey = (cfg, m) => cfg === "pinhole" || !m || m === "psf" ? cfg : `${cfg}|${m}`;
+const streamOf = (cam, cfg = CONFIG[cam], m = METHOD[cam]) => META.streams[cam]?.[streamKey(cfg, m)];
+const methodsOf = (cam, cfg = CONFIG[cam]) => cfg === "pinhole" ? [] : (META.methods ?? ["psf"]).filter(m => META.streams[cam]?.[streamKey(cfg, m)]);
+const streamUrl = (cam, cfg, view, m = METHOD[cam]) => `${DATA}${META.id}/${streamOf(cam, cfg, m).dir}/${view}.mp4`;
+function buffer(url) {
+  if (BLOBS.has(url)) return Promise.resolve(BLOBS.get(url));
+  if (LOADING.has(url)) return LOADING.get(url);
+  const p = (async () => {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url}: ${r.status}`);
+    const total = +(r.headers.get("Content-Length") || 0), reader = r.body.getReader(), chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      PROGRESS.set(url, total ? got / total : 0); onProgress();
+    }
+    const blob = URL.createObjectURL(new Blob(chunks, { type: "video/mp4" }));
+    BLOBS.set(url, blob); PROGRESS.set(url, 1); onProgress();
+    return blob;
+  })().finally(() => LOADING.delete(url));
+  LOADING.set(url, p);
+  return p;
+}
+// The streams on screen: every camera's image (thumbnails, frusta) and the main view.
+function neededUrls() {
+  const urls = TABS.map(c => streamUrl(c, CONFIG[c], "image"));
+  if (ACTIVE) urls.push(streamUrl(ACTIVE, CONFIG[ACTIVE], VIEW[ACTIVE]));
+  return [...new Set(urls)];
+}
+const bufferedFraction = () => { const u = neededUrls(); return u.reduce((a, x) => a + (PROGRESS.get(x) ?? 0), 0) / Math.max(1, u.length); };
+let PROG_DRAW = false;
+function onProgress() {
+  if (PROG_DRAW) return; PROG_DRAW = true;
+  requestAnimationFrame(() => { PROG_DRAW = false; drawBuffered(); setPlayLabel(); updateThumbLoads(); });
+}
+function drawBuffered() {
+  const c = $("#buffered"), w = c.clientWidth; if (!w) return;
+  c.width = w; c.height = 3;
+  const g = c.getContext("2d"); g.clearRect(0, 0, w, 3); g.fillStyle = "rgba(120, 160, 255, 0.55)";
+  if (META) g.fillRect(0, 0, Math.round(w * bufferedFraction()), 3);
+}
+window.addEventListener("resize", drawBuffered);
+
+// ---------------------------------------------------------------- datasets and scenes
+const cap = (t) => t ? t[0].toUpperCase() + t.slice(1) : t;
+function datasetName(suite) {
+  if (suite === "robocasa_atomic") return "RoboCasa · atomic kitchen tasks (robocasa_atomic)";
+  const m = /^libero_(.+)$/.exec(suite ?? "");
+  return m ? `LIBERO-${m[1].split("_").map(cap).join(" ")} (${suite})` : suite ?? "dataset";
+}
+const SIM_LABEL = { libero: "LIBERO · robosuite 1.4", robocasa: "RoboCasa kitchens · robosuite 1.5" };
+const KEY = "twinrobo.preview.scene";
+const store = { get: () => { try { return sessionStorage.getItem(KEY); } catch { return null; } },
+                set: (v) => { try { sessionStorage.setItem(KEY, v); } catch {} } };
+
+function fillPickers() {
+  $("#datasetpick").innerHTML = MANIFEST.scenes.map(s =>
+    `<optgroup label="${SIM_LABEL[s.simulator] ?? s.simulator}"><option value="${s.id}">${datasetName(s.run.suite)} · 1 scene</option></optgroup>`).join("");
+  $("#datasetpick").value = META.id;
+  const r = META.run;
+  $("#taskpick").innerHTML = `<option>${cap(r.scene_label ?? r.instruction)}</option>`;
+  $("#robotpick").innerHTML = `<option>${META.robot_info.label}</option>`;
+  const demo = (r.demo ?? "").replace("demo_", "demo ").replace("episode_", "episode ");
+  $("#movepick").innerHTML = `<option>${demo}${r.instruction ? ` · ${r.instruction}` : ""}</option>`;
+}
+$("#datasetpick").onchange = (e) => openScene(e.target.value).catch(err => setStatus(err.message));
+
+let LOADS = 0;
+function sceneLoading(on, msg) {
+  if (on) { LOADS++; if (msg) $("#loadmsg").textContent = msg; $("#loading3d").hidden = false; return; }
+  LOADS = Math.max(0, LOADS - 1); if (!LOADS) $("#loading3d").hidden = true;
+}
+
+// Per-frame poses: counts in poses.json, float32 arrays in poses.bin.
+async function loadPoses(dir) {
+  const head = await json(`${dir}poses.json`);
+  const r = await fetch(`${dir}poses.bin`, { cache: "no-cache" });
+  if (!r.ok) throw new Error(`${dir}poses.bin: ${r.status}`);
+  const buf = new Float32Array(await r.arrayBuffer());
+  for (const [k, [off, n]] of Object.entries(head.arrays)) head[k] = buf.subarray(off, off + n);
+  return head;
+}
+
+let OPEN = 0;
+async function openScene(id) {
+  const gen = ++OPEN;
+  stop();
+  sceneLoading(true, "Loading the scene…");
+  try {
+    const meta = await json(`${DATA}${id}/meta.json`);
+    const [scene, poses] = await Promise.all([json(`${DATA}${id}/scene.json`), loadPoses(`${DATA}${id}/`)]);
+    if (gen !== OPEN) return;
+    META = meta; store.set(id); history.replaceState(null, "", `#${id}`);
+    // the previous scene's views go while this one builds
+    TABS = []; ACTIVE = null; MAIN = null;
+    $("#thumbs").innerHTML = ""; $("#camlist").innerHTML = ""; $("#lensfacts").textContent = "";
+    $("#imgmain").innerHTML = `<div class="hint" style="padding:40px;text-align:center">Loading the scene…</div>`;
+    for (const k of Object.keys(CONFIG)) delete CONFIG[k];
+    for (const k of Object.keys(VIEW)) delete VIEW[k];
+    for (const k of Object.keys(METHOD)) delete METHOD[k];
+    TABS = META.cameras.filter(c => META.streams[c]?.pinhole);
+    for (const c of TABS) { CONFIG[c] = "pinhole"; VIEW[c] = "image"; METHOD[c] = "psf"; }
+    fillPickers();
+    await buildScene(scene, () => gen === OPEN);
+    if (gen !== OPEN) return;
+    SCENE = scene; POSES = poses;
+    const fr = $("#frame"); fr.max = META.num_frames - 1; fr.value = 0;
+    renderThumbs(); renderCameras();
+    selectTab(TABS.includes(wrist()) ? wrist() : TABS[0]); applyPose(0); updateLabel();
+  } finally { sceneLoading(false); }
+}
+
+// ---------------------------------------------------------------- 3D stage
+const host = $("#three");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+const scene3 = new THREE.Scene();
+scene3.background = new THREE.Color(0x2a2e35);
+// Soft studio lighting for reflections (glossy appliances, metal, glass).
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene3.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene3.environmentIntensity = 0.55;
+const cam3 = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+cam3.up.set(0, 0, 1);
+const HOME = new THREE.Vector3(1.9, -1.3, 2.0);
+cam3.position.copy(HOME);
+const controls = new OrbitControls(cam3, renderer.domElement);
+controls.target.set(0, 0, 0.9);
+controls.enableDamping = true;
+scene3.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(1, -1, 3); scene3.add(sun, sun.target);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+const fill = new THREE.DirectionalLight(0xffffff, 0.45); fill.position.set(-2, 1, 1.5); scene3.add(fill);
+// The sun's shadow covers the robot's working area, around the orbit target.
+function aimSun(target) {
+  sun.target.position.copy(target); sun.position.copy(target).add(new THREE.Vector3(1.2, -1.0, 3.0));
+  const c = sun.shadow.camera; c.left = c.bottom = -2.2; c.right = c.top = 2.2; c.near = 0.1; c.far = 8; c.updateProjectionMatrix();
+}
+// MuJoCo's Phong material -> physically based: shininess and specular set the gloss.
+function mujocoMaterial(g) {
+  const [r, gg, bb, a] = g.rgba;
+  const sh = g.shininess ?? 0.5, sp = Math.min(g.specular ?? 0.5, 1.5), refl = g.reflectance ?? 0;
+  const mat = new THREE.MeshStandardMaterial({
+    roughness: THREE.MathUtils.clamp(0.92 - 0.45 * sh * Math.min(1, sp + 0.3) - 0.4 * refl, 0.18, 0.95),
+    metalness: THREE.MathUtils.clamp(0.6 * refl, 0, 0.6),
+    envMapIntensity: 0.5 + 0.6 * Math.min(1, sp),
+    transparent: a < 1, opacity: a, depthWrite: a >= 0.95,
+    side: g.type === 0 ? THREE.DoubleSide : THREE.FrontSide,
+  });
+  mat.color.setRGB(r, gg, bb, THREE.SRGBColorSpace);
+  if (g.emission > 0) mat.emissive.setRGB(r * g.emission, gg * g.emission, bb * g.emission, THREE.SRGBColorSpace);
+  return mat;
+}
+let world = null, bodies = [], frusta = {}, lookCam = null;
+if (new URLSearchParams(location.search).has("debug")) window.preview = { THREE, cam3, controls, scene3, renderer };
+
+function freeFov() {
+  const hfov = THREE.MathUtils.degToRad(60);
+  return Math.min(80, Math.max(45, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(hfov / 2) / Math.max(cam3.aspect, 0.1)))));
+}
+function resize() {
+  const w = host.clientWidth, h = host.clientHeight;
+  renderer.setSize(w, h, false); cam3.aspect = w / Math.max(h, 1);
+  if (!lookCam) cam3.fov = freeFov();
+  cam3.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(host); resize();
+
+const texLoader = new THREE.TextureLoader();
+let texCache = {};
+function texture(id, repeat) {
+  const key = `${id}:${repeat}`;
+  if (!texCache[key]) {
+    const t = texLoader.load(`${DATA}${META.id}/tex/${id}.webp`);
+    t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.flipY = false;
+    t.repeat.set(repeat[0], repeat[1]); t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    texCache[key] = t;
+  }
+  return texCache[key];
+}
+
+// The scene geometry is stored gzip-compressed: stream it with progress, then inflate.
+async function fetchGeometry(url, onProgress) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: ${r.status}`);
+  const total = +(r.headers.get("Content-Length") || 0), reader = r.body.getReader(), chunks = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value); got += value.length; onProgress(got, total);
+  }
+  let blob = new Blob(chunks);
+  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+  if (head[0] === 0x1f && head[1] === 0x8b)  // still gzip: the host served it as is
+    blob = await new Response(blob.stream().pipeThrough(new DecompressionStream("gzip"))).blob();
+  return blob.arrayBuffer();
+}
+
+async function buildScene(scene, current = () => true) {
+  const buf = new Float32Array(await fetchGeometry(`${DATA}${META.id}/scene.bin.gz`, (got, total) => {
+    $("#loadmsg").textContent = total ? `scene geometry ${(got / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(1)} MB · ${Math.round(100 * got / total)}%` : `scene geometry ${(got / 1e6).toFixed(1)} MB`;
+  }));
+  if (!current()) return false;
+  texCache = {};
+  if (world) { scene3.remove(world); world.traverse(o => { o.geometry?.dispose?.(); }); }
+  $("#loadmsg").textContent = "building the 3D scene…";
+  world = new THREE.Group(); bodies = [];
+  for (let b = 0; b < scene.nbody; b++) { const g = new THREE.Group(); bodies.push(g); world.add(g); }
+  const meshGeo = {};
+  const arr = ([off, n], k) => new THREE.BufferAttribute(buf.subarray(off, off + n), k);
+  for (const g of scene.geoms) {
+    let geo; const s = g.size;
+    switch (g.type) {
+      case 0: geo = new THREE.PlaneGeometry(2 * (s[0] || 5), 2 * (s[1] || 5)); break;
+      case 2: geo = new THREE.SphereGeometry(s[0], 24, 16); break;
+      case 3: geo = new THREE.CapsuleGeometry(s[0], 2 * s[1], 8, 16); geo.rotateX(Math.PI / 2); break;
+      case 4: geo = new THREE.SphereGeometry(1, 24, 16); geo.scale(s[0], s[1], s[2]); break;
+      case 5: geo = new THREE.CylinderGeometry(s[0], s[0], 2 * s[1], 24); geo.rotateX(Math.PI / 2); break;
+      case 6: geo = new THREE.BoxGeometry(2 * s[0], 2 * s[1], 2 * s[2]); break;
+      case 7: {
+        const m = scene.meshes[g.mesh];
+        if (!meshGeo[g.mesh]) {
+          const bg = new THREE.BufferGeometry();
+          bg.setAttribute("position", arr(m.position, 3)); bg.setAttribute("normal", arr(m.normal, 3));
+          if (m.uv) bg.setAttribute("uv", arr(m.uv, 2));
+          meshGeo[g.mesh] = bg;
+        }
+        geo = meshGeo[g.mesh]; break;
+      }
+      default: continue;
+    }
+    const mat = mujocoMaterial(g), a = g.rgba[3];
+    const hasUV = g.type !== 7 || scene.meshes[g.mesh].uv;
+    if (g.texture >= 0 && hasUV) {
+      let rep = g.texrepeat;
+      if (g.texuniform && (g.type === 0 || g.type === 6)) rep = [rep[0] * 2 * (s[0] || 5), rep[1] * 2 * (s[1] || 5)];
+      mat.map = texture(g.texture, rep); mat.color.set(0xffffff);
+    }
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = a >= 0.95 && g.type !== 0; mesh.receiveShadow = true;
+    mesh.position.set(...g.pos); mesh.quaternion.set(g.quat[1], g.quat[2], g.quat[3], g.quat[0]);
+    bodies[g.body].add(mesh);
+  }
+  scene3.add(world);
+  for (const f of Object.values(frusta)) scene3.remove(f.group);
+  frusta = {};
+  if (scene.focus) {  // over the robot's shoulder: behind and above its base, looking ahead
+    const [p, m] = [scene.focus.pos, scene.focus.mat];
+    const at = (x, y, z) => [p[0] + m[0] * x + m[1] * y + m[2] * z, p[1] + m[3] * x + m[4] * y + m[5] * z, p[2] + m[6] * x + m[7] * y + m[8] * z];
+    controls.target.set(...at(0.9, 0, 0.9));
+    HOME.set(...at(-0.9, -0.7, 1.9));
+  } else {
+    controls.target.set(...scene.center);
+    HOME.set(scene.center[0] + 1.05, scene.center[1] - 1.2, scene.center[2] + 0.85);
+  }
+  aimSun(controls.target);
+  if (!lookCam) { cam3.position.copy(HOME); cam3.lookAt(controls.target); controls.update(); }
+  $("#empty3d").hidden = true;
+  return true;
+}
+
+function applyPose(t) {
+  if (!POSES || !bodies.length) return;
+  const nb = POSES.nbody, P = POSES.body_pos, Q = POSES.body_quat;
+  for (let b = 0; b < nb; b++) {
+    const i = t * nb + b;
+    bodies[b].position.set(P[3 * i], P[3 * i + 1], P[3 * i + 2]);
+    bodies[b].quaternion.set(Q[4 * i + 1], Q[4 * i + 2], Q[4 * i + 3], Q[4 * i]);
+  }
+  for (const name of Object.keys(frusta)) placeFrustum(name, t);
+  if (lookCam) lookThrough(lookCam, t);
+}
+
+function camIndex(name) { return SCENE?.cameras.find(c => c.name === name)?.id ?? -1; }
+function camFov(name) {
+  const st = streamOf(name), k = SCENE.cameras.find(c => c.name === name) ?? { fovy: 60 };
+  const [w, h] = st?.resolution ?? [1, 1];
+  return { vfov: st?.twin?.vfov_deg ?? k.fovy, aspect: w / h };
+}
+function camMatrix(name, t) {
+  const c = camIndex(name), n = POSES.ncam, i = t * n + c;
+  const p = POSES.cam_pos, r = POSES.cam_mat.subarray(9 * i, 9 * i + 9);
+  return new THREE.Matrix4().set(r[0], r[1], r[2], p[3 * i], r[3], r[4], r[5], p[3 * i + 1], r[6], r[7], r[8], p[3 * i + 2], 0, 0, 0, 1);
+}
+function frustumGeometry(vfov, aspect, d) {
+  const h = Math.tan(THREE.MathUtils.degToRad(vfov) / 2) * d, w = h * aspect;
+  const c = [[-w, -h, -d], [w, -h, -d], [w, h, -d], [-w, h, -d]];
+  const pts = [];
+  for (const q of c) pts.push(0, 0, 0, ...q);
+  for (let k = 0; k < 4; k++) pts.push(...c[k], ...c[(k + 1) % 4]);
+  pts.push(-w * .35, h * 1.08, -d, 0, h * 1.35, -d, 0, h * 1.35, -d, w * .35, h * 1.08, -d);  // "up" marker
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  return { g, w, h };
+}
+// A camera's frustum shows its own image: a video texture of its thumbnail's video.
+function ensureFrustum(name) {
+  if (camIndex(name) < 0) return null;
+  const color = new THREE.Color(COLORS[TABS.indexOf(name) % COLORS.length]);
+  const { vfov, aspect } = camFov(name);
+  const key = `${vfov.toFixed(3)}:${aspect.toFixed(4)}`;
+  let f = frusta[name];
+  if (f && f.key === key) { f.lines.material.color.copy(color); return f; }
+  if (f) { scene3.remove(f.group); f.texture?.dispose(); }
+  const d = /eye_in_hand|wrist/.test(name) ? 0.1 : 0.3;
+  const { g, w, h } = frustumGeometry(vfov, aspect, d);
+  const group = new THREE.Group(); group.matrixAutoUpdate = false;
+  const lines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95, depthTest: false, toneMapped: false }));
+  lines.renderOrder = 10;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2 * w, 2 * h),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthTest: false, toneMapped: false }));
+  plane.position.z = -d; plane.renderOrder = 9; plane.visible = false;
+  group.add(lines, plane); scene3.add(group);
+  f = frusta[name] = { group, lines, plane, key, texture: null, video: null };
+  return f;
+}
+function setFrustumVideo(name, video) {
+  const f = ensureFrustum(name); if (!f || f.video === video) return;
+  f.texture?.dispose();
+  const t = new THREE.VideoTexture(video); t.colorSpace = THREE.SRGBColorSpace;
+  f.video = video; f.texture = t; f.plane.material.map = t; f.plane.material.needsUpdate = true; f.plane.visible = true;
+}
+function placeFrustum(name, t) {
+  const f = frusta[name]; if (!f) return;
+  f.group.matrix.copy(camMatrix(name, t)); f.group.matrixWorldNeedsUpdate = true;
+  f.lines.material.opacity = name === ACTIVE ? 1 : 0.5;
+  f.group.visible = lookCam !== name;
+}
+function refreshFrusta() {
+  if (!SCENE) return;
+  for (const name of Object.keys(frusta)) if (!TABS.includes(name)) { scene3.remove(frusta[name].group); delete frusta[name]; }
+  for (const name of TABS) ensureFrustum(name);
+  applyPose(+$("#frame").value);
+  const lg = $("#legend"); lg.hidden = false;
+  lg.innerHTML = TABS.map((c, i) => `<div class="it ${c === ACTIVE ? "on" : ""}" data-c="${c}"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span>${nice(c)} · ${cfgLabel(c)}</div>`).join("");
+  for (const it of lg.querySelectorAll(".it")) it.onclick = () => selectTab(it.dataset.c);
+}
+function lookThrough(name, t) {
+  const { vfov } = camFov(name);
+  const pos = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+  camMatrix(name, t).decompose(pos, q, s);
+  cam3.position.copy(pos); cam3.quaternion.copy(q); cam3.fov = vfov; cam3.updateProjectionMatrix();
+}
+$("#lookthrough").onclick = () => {
+  if (!ACTIVE || !POSES || camIndex(ACTIVE) < 0) return;
+  lookCam = ACTIVE; controls.enabled = false;
+  $("#lookthrough").classList.add("on");
+  applyPose(+$("#frame").value);
+};
+$("#freeview").onclick = () => {
+  if (!lookCam) return;
+  lookCam = null; controls.enabled = true; cam3.fov = freeFov(); cam3.updateProjectionMatrix();
+  cam3.position.copy(HOME); cam3.up.set(0, 0, 1); cam3.lookAt(controls.target); controls.update();
+  $("#lookthrough").classList.remove("on"); applyPose(+$("#frame").value);
+};
+
+// ---------------------------------------------------------------- camera views
+const camColor = (c) => COLORS[Math.max(0, TABS.indexOf(c)) % COLORS.length];
+const THUMB = {};  // camera -> <video> of its image stream (thumbnail and frustum texture)
+let MAIN = null;   // the main panel's <video>
+const fps = () => META?.fps ?? 20;
+const timeOf = (f) => (f + 0.5) / fps();
+
+async function attach(video, url) {
+  const blob = await buffer(url);
+  if (video.dataset.url === url) return;
+  video.dataset.url = url; video.src = blob;
+  await new Promise(r => video.readyState >= 1 ? r() : video.addEventListener("loadedmetadata", r, { once: true }));
+  if (!playing) video.currentTime = timeOf(+$("#frame").value);
+}
+
+function renderThumbs() {
+  const box = $("#thumbs");
+  box.innerHTML = TABS.map(c => `<div class="thumbwrap">
+      <button class="thumb ${c === ACTIVE ? "on" : ""}" data-c="${c}" title="${nice(c)} · ${cfgOf(CONFIG[c]).label}">
+        <video muted playsinline preload="auto"></video><span class="load" hidden></span><span><span class="dot" style="background:${camColor(c)}"></span>${nice(c)}</span></button>
+      <span class="hint" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cfgLabel(c)}</span>
+    </div>`).join("");
+  for (const b of box.querySelectorAll(".thumb")) {
+    const c = b.dataset.c, v = $("video", b);
+    THUMB[c] = v;
+    b.onclick = () => selectTab(c);
+    attach(v, streamUrl(c, CONFIG[c], "image")).then(() => setFrustumVideo(c, v)).catch(e => setStatus(e.message));
+  }
+  updateThumbLoads();
+}
+function updateThumbLoads() {
+  for (const b of document.querySelectorAll(".thumb")) {
+    const c = b.dataset.c, url = META && streamUrl(c, CONFIG[c], "image"), p = PROGRESS.get(url) ?? 0, el = $(".load", b);
+    el.hidden = p >= 1; el.textContent = `${Math.round(100 * p)}%`;
+  }
+  const w = MAIN?.parentElement?.querySelector(".wait");
+  if (w && ACTIVE) w.textContent = `buffering ${Math.round(100 * (PROGRESS.get(streamUrl(ACTIVE, CONFIG[ACTIVE], VIEW[ACTIVE])) ?? 0))}%…`;
+}
+
+// The left panel: the camera configs the wrist camera can use; the other views are pinholes.
+const wrist = () => META.wrist ?? "robot0_eye_in_hand";
+function renderCameras() {
+  const box = $("#camlist"), cam = wrist(), q = $("#camq").value.trim().toLowerCase();
+  const f1 = (v, u = "") => v === null || v === undefined ? "–" : `${+(+v).toFixed(2)}${u}`;
+  const cfgs = META.configs.filter(k => streamOf(cam, k.id));
+  const text = (k) => [k.label, k.id, k.sensor, k.status, k.focal_length_mm && `${k.focal_length_mm} mm`, k.outputs_depth && "depth"].filter(Boolean).join(" ").toLowerCase();
+  const shown = cfgs.filter(k => q.split(/\s+/).every(w => text(k).includes(w)));
+  $("#camhint").textContent = `Pick the camera on ${nice(cam)}; ${TABS.filter(c => c !== cam).map(nice).join(", ") || "the other views"} ${TABS.length > 2 ? "are" : "is"} the simulator's pinhole. ${cfgs.length} cameras.`;
+  box.innerHTML = shown.map(k => k.id === "pinhole" ? `
+    <div class="cam ${CONFIG[cam] === k.id ? "on" : ""}" data-id="${k.id}"><h4>Pinhole${CONFIG[cam] === k.id ? '<span class="badge on">on the wrist</span>' : ""}</h4>
+      <dl><dt>Optics</dt><dd>ideal pinhole, the simulator's own camera</dd><dt>Field of view</dt><dd>vertical ${f1(SCENE?.cameras.find(c => c.name === cam)?.fovy, "°")}</dd></dl></div>` : `
+    <div class="cam ${CONFIG[cam] === k.id ? "on" : ""}" data-id="${k.id}"><h4>${k.label}<span class="badge">${k.status}</span>${CONFIG[cam] === k.id ? '<span class="badge on">on the wrist</span>' : ""}</h4>
+      <dl>
+        <dt>Sensor</dt><dd>${[k.sensor, `${k.width}×${k.height} px`, k.pixel_pitch_um ? f1(k.pixel_pitch_um, " µm") : null, k.shutter ? `${k.shutter} shutter` : null].filter(Boolean).join(" · ")}</dd>
+        <dt>Lens</dt><dd>${f1(k.focal_length_mm, " mm")} · f/${f1(k.f_number)}</dd>
+        <dt>Field of view</dt><dd>${k.fov_deg ? `${f1(k.fov_deg.h, "°")} × ${f1(k.fov_deg.v, "°")} · diag ${f1(k.fov_deg.d, "°")}` : "–"}</dd>
+        <dt>Focus</dt><dd>${k.focus_distance_m ?? "–"} m</dd>
+        <dt>Depth output</dt><dd>${k.outputs_depth ? "yes" : "no (image only)"}</dd>
+      </dl></div>`).join("") + (shown.length ? "" : `<div class="hint">No camera matches.</div>`);
+  for (const card of box.querySelectorAll(".cam")) card.onclick = () => { setConfig(cam, card.dataset.id); selectTab(cam); };
+}
+$("#camq").oninput = () => renderCameras();
+
+function setConfig(cam, id) {
+  const wasPlaying = playing; if (wasPlaying) stop();
+  CONFIG[cam] = id;
+  if (!streamOf(cam)) METHOD[cam] = "psf";  // this camera has no stream with that method (yet)
+  if (!streamOf(cam).views.includes(VIEW[cam])) VIEW[cam] = "image";
+  const f = frusta[cam]; if (f) { scene3.remove(f.group); f.texture?.dispose(); delete frusta[cam]; }
+  renderThumbs(); renderCameras(); if (cam === ACTIVE) showImage(); refreshFrusta();
+  if (wasPlaying) $("#play").click();
+}
+
+function setMethod(cam, m) {
+  if (!methodsOf(cam).includes(m)) return;
+  METHOD[cam] = m;
+  setConfig(cam, CONFIG[cam]);
+}
+for (const b of $("#methods").querySelectorAll(".chip")) b.onclick = () => ACTIVE && setMethod(ACTIVE, b.dataset.m);
+
+function selectTab(cam) {
+  ACTIVE = cam;
+  refreshFrusta();
+  for (const b of document.querySelectorAll(".thumb")) b.classList.toggle("on", b.dataset.c === cam);
+  showImage();
+}
+
+const METHOD_NAME = { psf: "PSF", pupil: "Pupil raster", raycast: "Ray cast" };
+const cfgLabel = (c) => cfgOf(CONFIG[c]).label + (CONFIG[c] !== "pinhole" && METHOD[c] !== "psf" ? ` · ${METHOD_NAME[METHOD[c]]}` : "");
+const VIEW_CAP = { image: (c) => `${nice(c)} · ${cfgLabel(c)}`, diff: (c) => `|camera − pinhole| × 10 · ${nice(c)}`, depth: (c) => `Depth (log scale, near = red) · ${nice(c)}` };
+function showImage() {
+  const cam = ACTIVE; if (!cam) return;
+  const st = streamOf(cam), cfg = cfgOf(CONFIG[cam]);
+  $("#imgdot").style.background = camColor(cam);
+  $("#imgcam").textContent = nice(cam);
+  $("#imgpreset").textContent = "· " + cfgLabel(cam);
+  for (const c of $("#views").querySelectorAll(".chip")) {
+    c.hidden = !st.views.includes(c.dataset.v);
+    c.classList.toggle("on", c.dataset.v === VIEW[cam]);
+  }
+  // The wrist always shows the picker; with the pinhole (no lens) it is greyed out.
+  const ms = methodsOf(cam), pin = CONFIG[cam] === "pinhole";
+  $("#methods").hidden = cam !== wrist();
+  for (const c of $("#methods").querySelectorAll(".chip")) {
+    c.disabled = !ms.includes(c.dataset.m);
+    c.dataset.tip ??= c.title;
+    c.title = pin ? "The pinhole has no lens: pick a camera on the left to choose its rendering method"
+      : c.disabled ? "Not baked for this camera yet" : c.dataset.tip;
+    c.classList.toggle("on", !pin && c.dataset.m === (METHOD[cam] ?? "psf"));
+  }
+  const missing = pin ? [] : ["pupil", "raycast"].filter(m => !ms.includes(m)).map(m => METHOD_NAME[m]);
+  $("#methodhint").hidden = !pin && !missing.length;
+  $("#methodhint").textContent = pin ? "← pick a camera on the left" : `${missing.join(" and ")} not available for this camera yet`;
+  const [w, h] = st.size, main = $("#imgmain");
+  main.innerHTML = `<figure class="fig"><div class="frame" style="aspect-ratio:${w} / ${h}">
+    <video muted playsinline preload="auto"></video><span class="cap">${VIEW_CAP[VIEW[cam]](cam)}</span><div class="wait">buffering…</div></div></figure>`;
+  MAIN = $("video", main);
+  const url = streamUrl(cam, CONFIG[cam], VIEW[cam]), video = MAIN;
+  attach(video, url).then(() => {
+    if (video !== MAIN) return;
+    video.parentElement.querySelector(".wait")?.remove();
+    if (playing) { video.currentTime = THUMB[ACTIVE]?.currentTime ?? timeOf(+$("#frame").value); video.playbackRate = +$("#speed").value; video.play().catch(() => {}); }
+  }).catch(e => setStatus(e.message));
+  layoutImages(); showFacts(); onProgress();
+}
+for (const c of $("#views").querySelectorAll(".chip")) c.onclick = () => { if (!ACTIVE) return; VIEW[ACTIVE] = c.dataset.v; showImage(); };
+
+// The camera's facts and how far this frame is from the pinhole view.
+function showFacts() {
+  const cam = ACTIVE, cfg = cfgOf(CONFIG[cam]), st = streamOf(cam), f = +$("#frame").value, el = $("#lensfacts");
+  if (!cam || !cfg) return;
+  if (cfg.id === "pinhole") { el.textContent = `Simulator pinhole · vertical FoV ${camFov(cam).vfov.toFixed(1)}° · ${st.resolution.join("×")} px`; return; }
+  const fov = cfg.fov_deg ? `FoV ${cfg.fov_deg.h.toFixed(1)}° × ${cfg.fov_deg.v.toFixed(1)}°` : "";
+  const psnr = st.psnr_db?.[f];
+  const rendered = st.resolution[0] !== cfg.width ? `rendered at ${st.resolution.join("×")} px (sensor ${cfg.width}×${cfg.height})` : `${cfg.width}×${cfg.height} px`;
+  el.textContent = [cfg.sensor, rendered, `${cfg.focal_length_mm} mm f/${cfg.f_number}`, fov,
+    cfg.focus_distance_m ? `focus ${cfg.focus_distance_m} m` : null, `${METHOD_NAME[st.method ?? "psf"]} rendering`, cfg.outputs_depth ? "outputs depth" : null,
+    psnr != null ? `PSNR vs pinhole ${psnr.toFixed(1)} dB` : null, cfg.status].filter(Boolean).join(" · ");
+}
+
+// Size the image to fill the column.
+function layoutImages() {
+  const main = $("#imgmain"), col = $("#imgs"), st = ACTIVE && streamOf(ACTIVE);
+  if (!st) return;
+  const ar = st.size[0] / st.size[1];
+  const others = [col.querySelector(".imghead"), $("#methods"), $("#lensfacts"), $("#thumbs")].reduce((a, el) => a + (el ? el.offsetHeight + 8 : 0), 0);
+  const W = col.clientWidth - 24, H = col.clientHeight - 30 - others;
+  main.style.gridTemplateColumns = `${Math.max(160, Math.floor(Math.min(W, H * ar)))}px`;
+}
+new ResizeObserver(() => layoutImages()).observe($("#imgs"));
+
+// ---------------------------------------------------------------- playback
+// Play buffers first: every camera's image and the main view are fetched in full, then all
+// videos play together; the main view is the clock the timeline, 3D scene and others follow.
+let playing = false, buffering = false, PLAY_RUN = 0;
+const videos = () => [MAIN, ...TABS.map(c => THUMB[c])].filter(Boolean);
+function setPlayLabel() {
+  const p = Math.round(100 * bufferedFraction());
+  $("#play").textContent = !playing ? "Play" : buffering ? `Buffering ${p}%` : "Pause";
+}
+function updateLabel() { $("#flabel").textContent = META ? `frame ${$("#frame").value} / ${$("#frame").max}` : "–"; }
+function showFrame(f) {
+  const fr = $("#frame"); f = Math.max(0, Math.min(+fr.max, f)); fr.value = f;
+  applyPose(f); updateLabel(); showFacts();
+  for (const v of videos()) if (v.readyState >= 1) v.currentTime = timeOf(f);
+}
+function stop() {
+  playing = false; buffering = false; PLAY_RUN++;
+  for (const v of videos()) v.pause();
+  setPlayLabel();
+}
+$("#play").onclick = async () => {
+  if (playing) { stop(); showFrame(+$("#frame").value); return; }
+  playing = true; buffering = true; const run = ++PLAY_RUN; setPlayLabel();
+  try { await Promise.all(neededUrls().map(buffer)); } catch (e) { setStatus(e.message); stop(); return; }
+  if (run !== PLAY_RUN) return;
+  await new Promise(r => setTimeout(r, 50));  // let the videos attach their blobs
+  buffering = false; setPlayLabel();
+  let f = +$("#frame").value; if (f >= +$("#frame").max) f = 0;
+  for (const v of videos()) { v.currentTime = timeOf(f); v.playbackRate = +$("#speed").value; v.play().catch(() => {}); }
+};
+$("#speed").onchange = () => { for (const v of videos()) v.playbackRate = +$("#speed").value; };
+$("#frame").oninput = () => { if (playing) stop(); showFrame(+$("#frame").value); };
+$("#prev").onclick = () => { if (playing) stop(); showFrame(+$("#frame").value - 1); };
+$("#next").onclick = () => { if (playing) stop(); showFrame(+$("#frame").value + 1); };
+document.addEventListener("keydown", (e) => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+  if (e.key === "ArrowLeft") $("#prev").click();
+  else if (e.key === "ArrowRight") $("#next").click();
+  else if (e.key === " ") { e.preventDefault(); $("#play").click(); }
+});
+
+function tick() {
+  if (playing && !buffering && MAIN && MAIN.readyState >= 2) {
+    const n = META.num_frames, clock = MAIN.currentTime;
+    if (MAIN.ended || clock >= n / fps() - 0.5 / fps()) {  // loop, as the Studio does
+      for (const v of videos()) { v.currentTime = timeOf(0); v.play().catch(() => {}); }
+    } else {
+      const f = Math.min(n - 1, Math.floor(clock * fps()));
+      if (f !== +$("#frame").value) { $("#frame").value = f; applyPose(f); updateLabel(); showFacts(); }
+      for (const v of videos()) if (v !== MAIN && Math.abs(v.currentTime - clock) > 1.5 / fps()) v.currentTime = clock;
+    }
+  }
+  if (!lookCam) controls.update();
+  renderer.render(scene3, cam3);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+(async () => {
+  try {
+    MANIFEST = await json(`${DATA}manifest.json`);
+    const want = decodeURIComponent(location.hash.slice(1)) || store.get();  // #<scene id> links a scene
+    await openScene(MANIFEST.scenes.some(s => s.id === want) ? want : MANIFEST.scenes[0].id);
+  } catch (e) { setStatus(e.message); }
+})();
+</script>
+</body>
+</html>
