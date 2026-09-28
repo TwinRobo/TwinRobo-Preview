@@ -16,8 +16,9 @@ Everything is precomputed, so the site is plain files: host `site/` anywhere
   RealSense D455 RGB, Logitech C920, Luxonis OAK-D mono, Stereolabs ZED X / X Mini
   2.2 mm) or the simulator's pinhole, each with TwinRobo's three rendering methods
   (PSF, pupil raster, ray cast); the other views (agent views) are pinholes.
-- **Views:** the image, the difference against the pinhole (catalog cameras)
-  and depth (cameras that output depth: the RealSense D455).
+- **Views:** the image and the difference against the pinhole (catalog cameras).
+  There is no depth view: TwinRobo simulates what cameras image, not yet what
+  depth cameras measure (see the SDK's roadmap).
 
 Compared to the Studio, the preview only replays: there are no rigs, custom
 cameras, camera-config editing, lens-ray settings, or capture.

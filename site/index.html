@@ -155,7 +155,6 @@
       <div class="views" id="views">
         <button class="chip" data-v="image">Image</button>
         <button class="chip" data-v="diff" title="|camera − pinhole| × 10 (same view)">Difference vs pinhole</button>
-        <button class="chip" data-v="depth" title="The depth map this camera outputs (log scale, near = red)">Depth</button>
       </div>
     </div>
     <div class="imgmain" id="imgmain"><div class="hint" style="padding:40px;text-align:center">Loading…</div></div>
@@ -640,7 +639,7 @@ function renderCameras() {
   const box = $("#camlist"), cam = wrist(), q = $("#camq").value.trim().toLowerCase();
   const f1 = (v, u = "") => v === null || v === undefined ? "–" : `${+(+v).toFixed(2)}${u}`;
   const cfgs = META.configs.filter(k => streamOf(cam, k.id));
-  const text = (k) => [k.label, k.id, k.sensor, k.status, k.focal_length_mm && `${k.focal_length_mm} mm`, k.outputs_depth && "depth"].filter(Boolean).join(" ").toLowerCase();
+  const text = (k) => [k.label, k.id, k.sensor, k.status, k.focal_length_mm && `${k.focal_length_mm} mm`].filter(Boolean).join(" ").toLowerCase();
   const shown = cfgs.filter(k => q.split(/\s+/).every(w => text(k).includes(w)));
   $("#camhint").textContent = `Pick the camera on ${nice(cam)}; ${TABS.filter(c => c !== cam).map(nice).join(", ") || "the other views"} ${TABS.length > 2 ? "are" : "is"} the simulator's pinhole.`;
   box.innerHTML = shown.map(k => k.id === "pinhole" ? `
@@ -652,7 +651,6 @@ function renderCameras() {
         <dt>Lens</dt><dd>${f1(k.focal_length_mm, " mm")} · f/${f1(k.f_number)}</dd>
         <dt>Field of view</dt><dd>${k.fov_deg ? `${f1(k.fov_deg.h, "°")} × ${f1(k.fov_deg.v, "°")} · diag ${f1(k.fov_deg.d, "°")}` : "–"}</dd>
         <dt>Focus</dt><dd>${k.focus_distance_m ?? "–"} m</dd>
-        <dt>Depth output</dt><dd>${k.outputs_depth ? "yes" : "no (image only)"}</dd>
       </dl></div>`).join("") + (shown.length ? "" : `<div class="hint">No camera matches.</div>`);
   for (const card of box.querySelectorAll(".cam")) card.onclick = () => { setConfig(cam, card.dataset.id); selectTab(cam); };
 }
@@ -685,7 +683,7 @@ function selectTab(cam) {
 
 const METHOD_NAME = { psf: "PSF", pupil: "Pupil raster", raycast: "Ray cast" };
 const cfgLabel = (c) => cfgOf(CONFIG[c]).label + (CONFIG[c] !== "pinhole" && METHOD[c] !== "psf" ? ` · ${METHOD_NAME[METHOD[c]]}` : "");
-const VIEW_CAP = { image: (c) => `${nice(c)} · ${cfgLabel(c)}`, diff: (c) => `|camera − pinhole| × 10 · ${nice(c)}`, depth: (c) => `Depth (log scale, near = red) · ${nice(c)}` };
+const VIEW_CAP = { image: (c) => `${nice(c)} · ${cfgLabel(c)}`, diff: (c) => `|camera − pinhole| × 10 · ${nice(c)}` };
 function showImage() {
   const cam = ACTIVE; if (!cam) return;
   const st = streamOf(cam), cfg = cfgOf(CONFIG[cam]);
@@ -732,8 +730,7 @@ function showFacts() {
   const psnr = st.psnr_db?.[f];
   const rendered = st.resolution[0] !== cfg.width ? `rendered at ${st.resolution.join("×")} px (sensor ${cfg.width}×${cfg.height})` : `${cfg.width}×${cfg.height} px`;
   el.textContent = [cfg.sensor, rendered, `${cfg.focal_length_mm} mm f/${cfg.f_number}`, fov,
-    cfg.focus_distance_m ? `focus ${cfg.focus_distance_m} m` : null, `${METHOD_NAME[st.method ?? "psf"]} rendering`, cfg.outputs_depth ? "outputs depth" : null,
-    psnr != null ? `PSNR vs pinhole ${psnr.toFixed(1)} dB` : null, cfg.status].filter(Boolean).join(" · ");
+    cfg.focus_distance_m ? `focus ${cfg.focus_distance_m} m` : null, `${METHOD_NAME[st.method ?? "psf"]} rendering`, psnr != null ? `PSNR vs pinhole ${psnr.toFixed(1)} dB` : null, cfg.status].filter(Boolean).join(" · ");
 }
 
 // Size the image to fill the column.
