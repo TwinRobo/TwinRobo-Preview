@@ -51,6 +51,9 @@
   .cam { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; cursor: pointer; }
   .cam:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
   .cam.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .note { border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+          border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+  .note b { color: var(--ink); } .note a { color: var(--accent); }
   .cam h4 { margin: 0 0 6px; font-size: 13px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .cam dl { display: grid; grid-template-columns: 92px 1fr; gap: 3px 10px; margin: 0; font-size: 12px; }
   .cam dt { color: var(--muted); } .cam dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
@@ -132,7 +135,18 @@
       <input id="camq" type="search" placeholder="Search, e.g. realsense, zed, 2.2 mm" autocomplete="off">
       <div class="hint" id="camhint"></div>
     </div>
-    <div class="tabbody" id="camlist"></div>
+    <div class="tabbody"><div id="camlist"></div>
+      <div class="note">
+        <b>Only 5 cameras are shown here</b>: the simulator's pinhole and four of the cameras in the
+        TwinRobo catalog. The full catalog and the SDK are in the main repository,
+        <a href="https://github.com/TwinRobo/TwinRobo-Core" target="_blank" rel="noopener">TwinRobo-Core</a>
+        (<a href="https://twinrobo.github.io/TwinRobo-Core/catalog/" target="_blank" rel="noopener">camera catalog</a>).
+        <br><br>
+        <b>Make cameras?</b> Contact us to present your camera here:
+        <a href="https://twinrobo.github.io/TwinRobo-Core/partners/" target="_blank" rel="noopener">camera partners</a>
+        · <a href="https://github.com/TwinRobo/TwinRobo-Core/issues/new?template=camera_partner.md" target="_blank" rel="noopener">partner inquiry</a>.
+      </div>
+    </div>
   </aside>
   <section class="imgs" id="imgs">
     <div class="imghead">
@@ -297,6 +311,8 @@ async function loadPoses(dir) {
   return head;
 }
 
+const DEFAULT_METHOD = "raycast";
+
 let OPEN = 0;
 async function openScene(id) {
   const gen = ++OPEN;
@@ -315,7 +331,10 @@ async function openScene(id) {
     for (const k of Object.keys(VIEW)) delete VIEW[k];
     for (const k of Object.keys(METHOD)) delete METHOD[k];
     TABS = META.cameras.filter(c => META.streams[c]?.pinhole);
-    for (const c of TABS) { CONFIG[c] = "pinhole"; VIEW[c] = "image"; METHOD[c] = "psf"; }
+    for (const c of TABS) { CONFIG[c] = "pinhole"; VIEW[c] = "image"; METHOD[c] = DEFAULT_METHOD; }
+    // the wrist starts on the first catalog camera, rendered with ray casting
+    const w = META.wrist ?? "robot0_eye_in_hand", first = META.configs.find(k => k.id !== "pinhole" && META.streams[w]?.[k.id]);
+    if (TABS.includes(w) && first) CONFIG[w] = first.id;
     fillPickers();
     await buildScene(scene, () => gen === OPEN);
     if (gen !== OPEN) return;
@@ -622,7 +641,7 @@ function renderCameras() {
   const cfgs = META.configs.filter(k => streamOf(cam, k.id));
   const text = (k) => [k.label, k.id, k.sensor, k.status, k.focal_length_mm && `${k.focal_length_mm} mm`, k.outputs_depth && "depth"].filter(Boolean).join(" ").toLowerCase();
   const shown = cfgs.filter(k => q.split(/\s+/).every(w => text(k).includes(w)));
-  $("#camhint").textContent = `Pick the camera on ${nice(cam)}; ${TABS.filter(c => c !== cam).map(nice).join(", ") || "the other views"} ${TABS.length > 2 ? "are" : "is"} the simulator's pinhole. ${cfgs.length} cameras.`;
+  $("#camhint").textContent = `Pick the camera on ${nice(cam)}; ${TABS.filter(c => c !== cam).map(nice).join(", ") || "the other views"} ${TABS.length > 2 ? "are" : "is"} the simulator's pinhole.`;
   box.innerHTML = shown.map(k => k.id === "pinhole" ? `
     <div class="cam ${CONFIG[cam] === k.id ? "on" : ""}" data-id="${k.id}"><h4>Pinhole${CONFIG[cam] === k.id ? '<span class="badge on">on the wrist</span>' : ""}</h4>
       <dl><dt>Optics</dt><dd>ideal pinhole, the simulator's own camera</dd><dt>Field of view</dt><dd>vertical ${f1(SCENE?.cameras.find(c => c.name === cam)?.fovy, "°")}</dd></dl></div>` : `
@@ -641,6 +660,7 @@ $("#camq").oninput = () => renderCameras();
 function setConfig(cam, id) {
   const wasPlaying = playing; if (wasPlaying) stop();
   CONFIG[cam] = id;
+  if (id !== "pinhole" && methodsOf(cam).includes(DEFAULT_METHOD) && !methodsOf(cam).includes(METHOD[cam])) METHOD[cam] = DEFAULT_METHOD;
   if (!streamOf(cam)) METHOD[cam] = "psf";  // this camera has no stream with that method (yet)
   if (!streamOf(cam).views.includes(VIEW[cam])) VIEW[cam] = "image";
   const f = frusta[cam]; if (f) { scene3.remove(f.group); f.texture?.dispose(); delete frusta[cam]; }
