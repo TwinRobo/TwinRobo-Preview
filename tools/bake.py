@@ -60,7 +60,7 @@ CAMERAS = [
     "luxonis/oak-d/mono",
     "stereolabs/zed-x/2.2mm",
 ]
-METHODS = ("psf", "pupil", "raycast")  # TwinRobo's rendering methods (catalog cameras only)
+METHODS = ("psf", "raycast")  # TwinRobo's rendering methods (catalog cameras only)
 # the camera the catalog cameras are applied to; the others stay pinhole
 WRIST = "robot0_eye_in_hand"
 # Lens-ray methods trace every sensor pixel: larger sensors (12 MP) are read out at this width

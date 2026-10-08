@@ -161,7 +161,6 @@
     <div class="views methodbar" id="methods" title="TwinRobo's rendering method for this camera">
         <span class="meta" style="align-self:center;font-size:12px">Rendering</span>
         <button class="chip" data-m="psf" title="The simulator's pinhole render blurred by the lens' point-spread functions, then distorted (fast, 2.5D)">PSF</button>
-        <button class="chip" data-m="pupil" title="One view per cell of the lens' entrance pupil; every traced lens ray looks up its view (occlusion-aware blur)">Pupil raster</button>
         <button class="chip" data-m="raycast" title="Every lens ray is cast into the scene's triangles (exact visibility)">Ray cast</button>
         <span class="meta" id="methodhint" style="align-self:center;font-size:12px">← pick a camera on the left</span>
       </div>
@@ -681,7 +680,7 @@ function selectTab(cam) {
   showImage();
 }
 
-const METHOD_NAME = { psf: "PSF", pupil: "Pupil raster", raycast: "Ray cast" };
+const METHOD_NAME = { psf: "PSF", raycast: "Ray cast" };
 const cfgLabel = (c) => cfgOf(CONFIG[c]).label + (CONFIG[c] !== "pinhole" && METHOD[c] !== "psf" ? ` · ${METHOD_NAME[METHOD[c]]}` : "");
 const VIEW_CAP = { image: (c) => `${nice(c)} · ${cfgLabel(c)}`, diff: (c) => `|camera − pinhole| × 10 · ${nice(c)}` };
 function showImage() {
@@ -704,7 +703,7 @@ function showImage() {
       : c.disabled ? "Not baked for this camera yet" : c.dataset.tip;
     c.classList.toggle("on", !pin && c.dataset.m === (METHOD[cam] ?? "psf"));
   }
-  const missing = pin ? [] : ["pupil", "raycast"].filter(m => !ms.includes(m)).map(m => METHOD_NAME[m]);
+  const missing = pin ? [] : ["raycast"].filter(m => !ms.includes(m)).map(m => METHOD_NAME[m]);
   $("#methodhint").hidden = !pin && !missing.length;
   $("#methodhint").textContent = pin ? "← pick a camera on the left" : `${missing.join(" and ")} not available for this camera yet`;
   const [w, h] = st.size, main = $("#imgmain");
