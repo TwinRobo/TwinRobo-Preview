@@ -1,2 +1,8 @@
 __pycache__/
 *.part.mp4
+# local deployment files (Cloud Run, Cloudflare); not published
+README.txt
+access-plan.txt
+deploy.sh
+container/
+cloudflare/
