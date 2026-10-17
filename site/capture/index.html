@@ -90,8 +90,10 @@
   /* bottom right: the camera preview */
   #insetFrame { position: fixed; right: 16px; bottom: 16px; border: 1px solid var(--rule); border-radius: 8px; pointer-events: none;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4); }
-  #insetLabel { position: fixed; right: 22px; bottom: 22px; font: 11px var(--mono); color: var(--ink); background: var(--glass-strong);
-    padding: 3px 7px; border-radius: 5px; pointer-events: none; }
+  #insetLabel { position: fixed; right: 22px; bottom: 22px; display: grid; gap: 1px; font: 11px/1.35 var(--mono); color: var(--ink);
+    background: var(--glass-strong); padding: 3px 7px; border-radius: 5px; pointer-events: none; text-align: right; }
+  #insetLabel span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #insetLabel .hint { color: var(--muted); }
 
   /* modals: centred, with a backdrop */
   .modal { position: fixed; inset: 0; display: none; place-items: center; padding: 24px; background: rgba(6, 7, 8, 0.6); z-index: 10; }
@@ -185,7 +187,7 @@
 
 
 <div id="insetFrame"></div>
-<div id="insetLabel">robot camera</div>
+<div id="insetLabel"><span id="insetName"></span><span class="hint">C: next camera</span></div>
 
 <section id="review" class="glass" aria-label="Captured frames">
   <header>
@@ -720,8 +722,10 @@ renderer.setAnimationLoop(() => {
   if (root.getPropertyValue("--strip-left") !== sl) root.setProperty("--strip-left", sl);
   if (root.getPropertyValue("--strip-right") !== sr) root.setProperty("--strip-right", sr);
   }
-  document.getElementById("insetLabel").textContent =
-    `${entry.label}${ids.length > 1 ? " · left | right" : ""} · C: next camera`;
+  // the camera's name on its own row (cut to the preview's width), the C hint below it
+  const name = `${entry.label}${ids.length > 1 ? " · left | right" : ""}`, nameEl = document.getElementById("insetName");
+  if (nameEl.textContent !== name) { nameEl.textContent = name; nameEl.title = name; }
+  if (!uiHidden) document.getElementById("insetLabel").style.maxWidth = `${PREVIEW_W * ids.length - 12}px`;
   stats.textContent = `${fps.toFixed(0)} fps · ${frames.length} frame${frames.length === 1 ? "" : "s"}`;
 });
 function insetFrameRect(w, h) {
