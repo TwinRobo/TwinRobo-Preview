@@ -1,0 +1,212 @@
+{
+ "cameras": [
+  {
+   "id": "intel/realsense-d435/color",
+   "label": "Intel RealSense D435 / D435i RGB camera",
+   "type": "camera",
+   "eyes": {
+    "left": "intel--realsense-d435--color"
+   }
+  },
+  {
+   "id": "intel/realsense-d435/depth",
+   "label": "Intel RealSense D435 / D435i IR imager (one stereo eye)",
+   "type": "mono",
+   "eyes": {
+    "left": "intel--realsense-d435--depth"
+   }
+  },
+  {
+   "id": "intel/realsense-d455/color",
+   "label": "Intel RealSense D455 RGB camera",
+   "type": "camera",
+   "eyes": {
+    "left": "intel--realsense-d455--color"
+   }
+  },
+  {
+   "id": "intel/realsense-d455/depth",
+   "label": "Intel RealSense D455 IR imager (one stereo eye)",
+   "type": "mono",
+   "eyes": {
+    "left": "intel--realsense-d455--depth"
+   }
+  },
+  {
+   "id": "logitech/c920",
+   "label": "Logitech C920 HD Pro Webcam",
+   "type": "camera",
+   "eyes": {
+    "left": "logitech--c920"
+   }
+  },
+  {
+   "id": "luxonis/oak-d/color",
+   "label": "Luxonis OAK-D color camera",
+   "type": "camera",
+   "eyes": {
+    "left": "luxonis--oak-d--color"
+   }
+  },
+  {
+   "id": "luxonis/oak-d/mono",
+   "label": "Luxonis OAK-D mono camera (one stereo eye)",
+   "type": "mono",
+   "eyes": {
+    "left": "luxonis--oak-d--mono"
+   }
+  },
+  {
+   "id": "raspberrypi/camera-module-3/standard",
+   "label": "Raspberry Pi Camera Module 3",
+   "type": "camera",
+   "eyes": {
+    "left": "raspberrypi--camera-module-3--standard"
+   }
+  },
+  {
+   "id": "raspberrypi/camera-module-3/wide",
+   "label": "Raspberry Pi Camera Module 3 Wide",
+   "type": "camera",
+   "eyes": {
+    "left": "raspberrypi--camera-module-3--wide"
+   }
+  },
+  {
+   "id": "stereolabs/zed-2i/2.1mm",
+   "label": "Stereolabs ZED 2i 2.1 mm eye",
+   "type": "camera",
+   "eyes": {
+    "left": "stereolabs--zed-2i--2.1mm"
+   }
+  },
+  {
+   "id": "stereolabs/zed-x/2.2mm",
+   "label": "Stereolabs ZED X / X Mini 2.2 mm eye",
+   "type": "camera",
+   "eyes": {
+    "left": "stereolabs--zed-x--2.2mm"
+   }
+  },
+  {
+   "id": "stereolabs/zed-x/4mm",
+   "label": "Stereolabs ZED X 4 mm eye",
+   "type": "camera",
+   "eyes": {
+    "left": "stereolabs--zed-x--4mm"
+   }
+  },
+  {
+   "id": "intel/realsense-d435",
+   "label": "Intel RealSense D435 / D435i",
+   "type": "stereo",
+   "eyes": {
+    "left": "intel--realsense-d435--depth--rectified",
+    "right": "intel--realsense-d435--depth--rectified"
+   },
+   "right_translation_m": [
+    0.05,
+    0.0,
+    0.0
+   ],
+   "baseline_mm": 50.0,
+   "output": "rectified"
+  },
+  {
+   "id": "intel/realsense-d455",
+   "label": "Intel RealSense D455",
+   "type": "stereo",
+   "eyes": {
+    "left": "intel--realsense-d455--depth--rectified",
+    "right": "intel--realsense-d455--depth--rectified"
+   },
+   "right_translation_m": [
+    0.095,
+    0.0,
+    0.0
+   ],
+   "baseline_mm": 95.0,
+   "output": "rectified"
+  },
+  {
+   "id": "luxonis/oak-d",
+   "label": "Luxonis OAK-D",
+   "type": "stereo",
+   "eyes": {
+    "left": "luxonis--oak-d--mono--rectified",
+    "right": "luxonis--oak-d--mono--rectified"
+   },
+   "right_translation_m": [
+    0.075,
+    0.0,
+    0.0
+   ],
+   "baseline_mm": 75.0,
+   "output": "rectified"
+  },
+  {
+   "id": "stereolabs/zed-2i/2.1mm",
+   "label": "Stereolabs ZED 2i (2.1 mm)",
+   "type": "stereo",
+   "eyes": {
+    "left": "stereolabs--zed-2i--2.1mm--rectified",
+    "right": "stereolabs--zed-2i--2.1mm--rectified"
+   },
+   "right_translation_m": [
+    0.12,
+    0.0,
+    0.0
+   ],
+   "baseline_mm": 120.0,
+   "output": "rectified"
+  },
+  {
+   "id": "stereolabs/zed-x/2.2mm",
+   "label": "Stereolabs ZED X (2.2 mm)",
+   "type": "stereo",
+   "eyes": {
+    "left": "stereolabs--zed-x--2.2mm--rectified",
+    "right": "stereolabs--zed-x--2.2mm--rectified"
+   },
+   "right_translation_m": [
+    0.12,
+    0.0,
+    0.0
+   ],
+   "baseline_mm": 120.0,
+   "output": "rectified"
+  },
+  {
+   "id": "stereolabs/zed-x/4mm",
+   "label": "Stereolabs ZED X (4 mm)",
+   "type": "stereo",
+   "eyes": {
+    "left": "stereolabs--zed-x--4mm--rectified",
+    "right": "stereolabs--zed-x--4mm--rectified"
+   },
+   "right_translation_m": [
+    0.12,
+    0.0,
+    0.0
+   ],
+   "baseline_mm": 120.0,
+   "output": "rectified"
+  },
+  {
+   "id": "stereolabs/zed-x-mini/2.2mm",
+   "label": "Stereolabs ZED X Mini (2.2 mm)",
+   "type": "stereo",
+   "eyes": {
+    "left": "stereolabs--zed-x--2.2mm--rectified",
+    "right": "stereolabs--zed-x--2.2mm--rectified"
+   },
+   "right_translation_m": [
+    0.05,
+    0.0,
+    0.0
+   ],
+   "baseline_mm": 50.0,
+   "output": "rectified"
+  }
+ ]
+}

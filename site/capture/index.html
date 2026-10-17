@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TwinRobo Capture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #0e1012;
+    --glass: rgba(18, 21, 24, 0.72);
+    --glass-strong: rgba(18, 21, 24, 0.94);
+    --ink: #e8ebee;
+    --muted: #98a1aa;
+    --accent: #4fb3a9;
+    --accent-soft: rgba(79, 179, 169, 0.18);
+    --rec: #e5484d;
+    --rule: rgba(255, 255, 255, 0.11);
+    --key: #23282d;
+    --key-edge: #121518;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); overflow: hidden; }
+  canvas { display: block; }
+  .glass { background: var(--glass); border: 1px solid var(--rule); border-radius: 10px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  button { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 7px;
+    padding: 6px 11px; cursor: pointer; }
+  button:hover { background: rgba(255, 255, 255, 0.06); }
+  button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: 0.4; cursor: default; background: transparent; }
+  button.primary { border-color: var(--accent); background: var(--accent-soft); }
+  button.danger { border-color: rgba(229, 72, 77, 0.6); }
+  button.danger:hover { background: rgba(229, 72, 77, 0.16); }
+
+  /* top left: one compact line */
+  #top { position: fixed; left: 16px; top: 16px; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px; }
+  #top .home { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: var(--muted); text-decoration: none; }
+  #top .home:hover { background: rgba(255, 255, 255, 0.06); color: var(--ink); }
+  #top .title { font-weight: 600; letter-spacing: 0.01em; }
+  #stats { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #recDot { font: 600 11px var(--mono); color: var(--rec); letter-spacing: 0.08em; }
+  #helpBtn { width: 28px; height: 28px; padding: 0; border-radius: 7px; font: 600 13px var(--mono); }
+
+  /* top right: the camera */
+  #cam { position: fixed; right: 16px; top: 16px; width: 290px; padding: 12px 14px; display: grid; gap: 9px; }
+  #cam h2 { font: 500 11px var(--mono); margin: 0; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  #cam label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  select { width: 100%; min-width: 0; font: inherit; color: var(--ink); background: #1b1f23; border: 1px solid var(--rule); border-radius: 7px; padding: 6px 7px; }
+  .check { display: flex !important; align-items: center; gap: 8px; color: var(--ink) !important; font-size: 13px !important; }
+  #camInfo { font: 12px/1.55 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; border-top: 1px solid var(--rule); padding-top: 8px; }
+
+  /* bottom left: the key pad above the last capture */
+  #left { position: fixed; left: 16px; bottom: 16px; display: grid; gap: 10px; justify-items: start; }
+  #pad { display: flex; align-items: end; gap: 14px; padding: 10px 12px; }
+  .wasd { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: 40px 40px; gap: 5px;
+    grid-template-areas: ". w ." "a s d"; }
+  .side { display: grid; grid-template-columns: auto auto; gap: 5px; }
+  .key { position: relative; display: grid; place-items: center; min-width: 40px; height: 40px; padding: 0 8px;
+    background: var(--key); border: 1px solid var(--rule); border-radius: 7px; box-shadow: 0 3px 0 var(--key-edge);
+    font: 600 13px var(--mono); color: var(--ink); user-select: none; touch-action: none; transition: transform 60ms, box-shadow 60ms, background 60ms; }
+  .key small { display: block; font: 400 9px var(--sans); color: var(--muted); letter-spacing: 0.04em; margin-top: -3px; }
+  .key:has(small) { line-height: 1.05; padding-top: 3px; }
+  .key:hover { background: #2a3036; }
+  .key.down { transform: translateY(3px); box-shadow: 0 0 0 var(--key-edge); background: var(--accent-soft); border-color: var(--accent); color: #fff; }
+  #last { display: none; width: 260px; border-radius: 10px; overflow: hidden; transition: box-shadow 0.15s; }
+  #last.flash { box-shadow: 0 0 0 2px var(--accent); }
+  #last canvas { display: block; width: 100%; height: auto; }
+  #lastLabel { font: 11px var(--mono); color: var(--muted); padding: 5px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* bottom centre: the captures, always on */
+  #review { position: fixed; bottom: 16px; left: var(--strip-left, 330px); right: var(--strip-right, 352px); display: flex;
+    flex-direction: column; gap: 8px; padding: 10px 12px; min-width: 0; }
+  #review header { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #review h2 { font: 500 11px var(--mono); margin: 0 auto 0 0; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  #review header button { padding: 4px 9px; font-size: 13px; }
+  #rec .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--rec); margin-right: 7px; }
+  #rec.on { border-color: var(--rec); background: rgba(229, 72, 77, 0.16); }
+  #rec.on .dot { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.2; } }
+  #grid { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; min-height: 92px; align-items: stretch; }
+  #grid .note { align-self: center; }
+  body.hide-ui #top, body.hide-ui #cam, body.hide-ui #left, body.hide-ui #review, body.hide-ui #insetFrame,
+  body.hide-ui #insetLabel, body.hide-ui #hint { display: none !important; }
+
+  /* bottom right: the camera preview */
+  #insetFrame { position: fixed; right: 16px; bottom: 16px; border: 1px solid var(--rule); border-radius: 8px; pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4); }
+  #insetLabel { position: fixed; right: 22px; bottom: 22px; font: 11px var(--mono); color: var(--ink); background: var(--glass-strong);
+    padding: 3px 7px; border-radius: 5px; pointer-events: none; }
+
+  /* modals: centred, with a backdrop */
+  .modal { position: fixed; inset: 0; display: none; place-items: center; padding: 24px; background: rgba(6, 7, 8, 0.6); z-index: 10; }
+  .modal.open { display: grid; }
+  .dialog { width: min(1040px, 100%); max-height: min(82vh, 900px); display: flex; flex-direction: column; gap: 12px; padding: 18px 20px;
+    background: var(--glass-strong); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
+  .dialog header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .dialog h2 { font-size: 16px; margin: 0; flex: 1; font-weight: 600; }
+  .note { font-size: 12px; color: var(--muted); }
+  .card { position: relative; flex: none; width: 150px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: #1a1e22; }
+  .card img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+  .card .meta { font: 10px var(--mono); color: var(--muted); padding: 3px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .acts { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+  .card .acts button { width: 24px; height: 24px; font-size: 12px; padding: 0; background: var(--glass-strong); border-color: rgba(255, 255, 255, 0.25); }
+  .card .acts .dl:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .card .acts .del:hover { background: rgba(229, 72, 77, 0.3); border-color: var(--rec); }
+  #viewer .dialog { width: min(1400px, 100%); max-height: 94vh; }
+  #viewer .pics { display: grid; gap: 10px; align-items: center; }
+  #viewer .pics canvas, #viewer .pics img { width: 100%; height: auto; max-height: 62vh; object-fit: contain; border-radius: 6px; }
+  #viewerCap { font: 12px var(--mono); color: var(--muted); text-align: center; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .files { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .files button { font: 12px var(--mono); }
+  #help .dialog { width: min(640px, 100%); }
+  .shortcuts { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; align-items: center; margin: 0; }
+  .shortcuts dt { justify-self: end; }
+  .shortcuts dd { margin: 0; color: var(--muted); }
+  kbd { display: inline-block; min-width: 26px; text-align: center; font: 600 12px var(--mono); padding: 3px 7px; background: var(--key);
+    border: 1px solid var(--rule); border-radius: 5px; box-shadow: 0 2px 0 var(--key-edge); }
+  #help p { margin: 0; color: var(--muted); font-size: 13px; }
+  #help a { color: var(--accent); }
+
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+  #hint { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); padding: 7px 14px; font-size: 13px; color: var(--ink);
+    pointer-events: none; transition: opacity 0.6s; }
+  #hint.gone { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { #last, #hint, .key { transition: none; } #rec.on .dot { animation: none; } }
+  @media (max-width: 900px) { #cam { width: 240px; } #pad { display: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.3.1/dist/spark.module.js",
+  "fflate": "https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js"
+} }
+</script>
+</head>
+<body>
+<div id="loading">Loading the kitchen…</div>
+<header id="top" class="glass">
+  <a class="home" href="../" title="TwinRobo Preview" aria-label="Back to TwinRobo Preview">←</a>
+  <span class="title">Robot kitchen</span>
+  <span id="stats"></span>
+  <span id="recDot" hidden>● REC</span>
+  <button id="helpBtn" type="button" title="Shortcuts (Esc)" aria-label="Shortcuts">?</button>
+</header>
+<div id="hint" class="glass">Click the view to look around with the mouse · <kbd>Esc</kbd> shortcuts</div>
+
+<aside id="cam" class="glass" aria-label="Camera">
+  <h2>Camera <span style="float:right">C</span></h2>
+  <label>Model<select id="camSel"></select></label>
+  <label id="eyeRow">Stereo eye<select id="eyeSel">
+    <option value="both">Both, side by side</option><option value="left">Left</option><option value="right">Right</option>
+  </select></label>
+  <label>PSF resolution (the image stays sharp)<select id="resSel">
+    <option value="320">320 px wide (fast)</option><option value="640">640 px wide</option>
+  </select></label>
+  <label class="check"><input type="checkbox" id="lensChk" checked> Lens: distortion and blur</label>
+  <div id="camInfo"></div>
+</aside>
+
+<div id="left">
+  <div id="pad" class="glass" aria-label="Driving keys (click and hold to drive)">
+    <div class="wasd">
+      <button class="key" type="button" data-code="KeyW" style="grid-area: w" aria-label="Forward (W)">W</button>
+      <button class="key" type="button" data-code="KeyA" style="grid-area: a" aria-label="Left (A)">A</button>
+      <button class="key" type="button" data-code="KeyS" style="grid-area: s" aria-label="Back (S)">S</button>
+      <button class="key" type="button" data-code="KeyD" style="grid-area: d" aria-label="Right (D)">D</button>
+    </div>
+    <div class="side">
+      <button class="key" type="button" data-code="ShiftLeft" aria-label="Faster (Shift)">Shift<small>faster</small></button>
+      <button class="key" type="button" data-code="KeyC" aria-label="Next camera (C)">C<small>camera</small></button>
+      <button class="key" type="button" data-code="Space" aria-label="Capture (Space)">Space<small>capture</small></button>
+      <button class="key" type="button" data-code="KeyH" aria-label="Hide the interface (H)">H<small>hide UI</small></button>
+    </div>
+  </div>
+  <div id="last" class="glass"><canvas id="lastView" width="260" height="160"></canvas><div id="lastLabel"></div></div>
+</div>
+
+
+
+<div id="insetFrame"></div>
+<div id="insetLabel">robot camera</div>
+
+<section id="review" class="glass" aria-label="Captured frames">
+  <header>
+    <h2 id="reviewTitle">Captures</h2>
+    <button id="rec" type="button"><span class="dot"></span>Record</button>
+    <button id="dl" class="primary" type="button" title="Download all captures (.zip)">↓ All</button>
+    <button id="clearAll" class="danger" type="button" title="Delete all captures">× All</button>
+  </header>
+  <div id="grid"></div>
+</section>
+
+<div id="viewer" class="modal" role="dialog" aria-modal="true" aria-label="Captured frame">
+  <div class="dialog">
+    <div class="pics" id="viewerPics"></div>
+    <div id="viewerCap"></div>
+    <div class="files" id="viewerFiles"></div>
+    <div class="row">
+      <button id="vPrev" type="button">← Previous</button>
+      <button id="vDel" class="danger" type="button">Delete</button>
+      <button id="vNext" type="button">Next →</button>
+      <button id="vClose" type="button">Close <kbd>Esc</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div id="help" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="dialog">
+    <header><h2 id="helpTitle">Shortcuts</h2><button id="helpClose" type="button">Close <kbd>Esc</kbd></button></header>
+    <p>A real New York kitchen, reconstructed from photos. You drive the robot through a pinhole; the camera you pick is
+      previewed bottom right, through its lens, and that is what a capture records. Captures are listed at the
+      bottom: click one to view it with its depth, download it or delete it.</p>
+    <dl class="shortcuts">
+      <dt><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>drive: forward, left, back, right (or hold the keys on screen)</dd>
+      <dt><kbd>Shift</kbd></dt><dd>drive faster</dd>
+      <dt>Mouse</dt><dd>turn the robot and tilt its camera: click the view first, <kbd>Esc</kbd> to release</dd>
+      <dt><kbd>C</kbd></dt><dd>next camera (<kbd>Shift</kbd>+<kbd>C</kbd>: previous)</dd>
+      <dt><kbd>Space</kbd></dt><dd>capture a frame</dd>
+      <dt><kbd>H</kbd></dt><dd>hide or show the interface</dd>
+      <dt><kbd>M</kbd></dt><dd>show where the robot can drive</dd>
+      <dt><kbd>Esc</kbd> <kbd>?</kbd></dt><dd>these shortcuts</dd>
+    </dl>
+    <p>Scene: Zip-NeRF “nyc” (Barron et al., CC BY 4.0), trained with gsplat, shown with Spark. Lenses: the
+      <a href="https://twinrobo.github.io/" target="_blank" rel="noopener">TwinRobo</a> camera catalog (PSFs from DeepLens).</p>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from "three";
+import { PLYLoader } from "three/addons/loaders/PLYLoader.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+import { zipSync, strToU8 } from "fflate";
+import { EyeOptics } from "./optics.js";
+
+const meta = await (await fetch("scene.json")).json();
+const catalog = (await (await fetch("cameras/index.json")).json()).cameras;
+
+// --- renderer, scene
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.autoClear = false;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x101214);
+scene.add(new SparkRenderer({ renderer }));
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2.0));
+
+// --- the scene splat (COLMAP frame -> meters, y up) and its coarse depth mesh
+const splat = new SplatMesh({ url: meta.splat });
+new THREE.Matrix4().fromArray(meta.transform).decompose(splat.position, splat.quaternion, splat.scale);
+scene.add(splat);
+splat.initialized.then(() => document.getElementById("loading").remove());
+const depthScene = new THREE.Scene();
+new PLYLoader().load(meta.depthMesh, (g) => depthScene.add(new THREE.Mesh(g)));
+
+// --- obstacle map
+const occ = await new Promise((res) => {
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, 0);
+    res({ w: img.width, h: img.height, px: g.getImageData(0, 0, img.width, img.height).data });
+  };
+  img.src = meta.occupancy.image;
+});
+const { cell, origin } = meta.occupancy;
+function free(x, z) {  // three (x, z) -> aligned (x, -z) -> image (row 0 = largest aligned y)
+  const i = Math.floor((x - origin[0]) / cell), jy = Math.floor((-z - origin[1]) / cell);
+  if (i < 0 || jy < 0 || i >= occ.w || jy >= occ.h) return false;
+  return occ.px[((occ.h - 1 - jy) * occ.w + i) * 4] > 127;
+}
+const mapTex = new THREE.TextureLoader().load(meta.occupancy.image);
+mapTex.magFilter = THREE.NearestFilter;
+const mapSize = [occ.w * cell, occ.h * cell];
+const overlay = new THREE.Mesh(new THREE.PlaneGeometry(mapSize[0], mapSize[1]),
+  new THREE.MeshBasicMaterial({ map: mapTex, transparent: true, opacity: 0.45, depthWrite: false }));
+overlay.rotation.x = -Math.PI / 2;
+overlay.position.set(origin[0] + mapSize[0] / 2, 0.01, -(origin[1] + mapSize[1] / 2));
+overlay.visible = false;
+scene.add(overlay);
+const RADIUS = 0.22;
+function fits(x, z) {
+  if (!free(x, z)) return false;
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    if (!free(x + RADIUS * Math.cos(a), z + RADIUS * Math.sin(a))) return false;
+  }
+  return true;
+}
+
+// --- the robot: a round base, a mast, a camera head with one or two eyes
+const robot = new THREE.Group();
+const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.1 });
+const base = new THREE.Mesh(new THREE.CylinderGeometry(RADIUS, RADIUS, 0.18, 40), mat(0x2b3036));
+base.position.y = 0.11;
+const bumper = new THREE.Mesh(new THREE.TorusGeometry(RADIUS, 0.015, 8, 40), mat(0x4fb3a9));
+bumper.rotation.x = Math.PI / 2; bumper.position.y = 0.06;
+const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.95, 16), mat(0x9aa3ab));
+mast.position.y = 0.67;
+const head = new THREE.Group();
+head.position.y = 1.18;
+const box = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.06), mat(0x1b1e22));
+head.add(box);
+robot.add(base, bumper, mast, head);
+scene.add(robot);
+const eyes = [new THREE.Object3D(), new THREE.Object3D()];  // camera frames (three.js: look along -z), left then right
+eyes.forEach((e) => { e.position.z = -0.04; head.add(e); });
+const fullEye = new THREE.PerspectiveCamera(70, 4 / 3, 0.02, 50);  // full-resolution view when the lens is off
+
+// --- cameras: the catalog (TwinRobo, exported by export_cameras.py) and an ideal pinhole
+const PINHOLE = (() => {  // 70 deg vertical, 4:3, no lens
+  const ty = Math.tan(THREE.MathUtils.degToRad(35)), tx = ty * 4 / 3, n = [9, 7], d = [];
+  for (let j = 0; j < n[1]; j++) for (let i = 0; i < n[0]; i++) d.push(-1 + 2 * i / (n[0] - 1), -1 + 2 * j / (n[1] - 1));
+  const b = new Uint8Array(new Float32Array(d).buffer);
+  let s = ""; for (const x of b) s += String.fromCharCode(x);
+  return { sensor: [640, 480], mono: false, render: { tan_x: tx, tan_y: ty, vfov_deg: 70 }, map: { size: n, data: btoa(s) },
+    intrinsics: { fx: 320 / tx, fy: 240 / ty, cx: 319.5, cy: 239.5 }, distortion: null, blur: null, rectified: false };
+})();
+const entries = [{ id: "pinhole", label: "Ideal pinhole (no lens)", type: "camera", eyes: { left: null } }, ...catalog];
+const camSel = document.getElementById("camSel");
+for (const [group, filter] of [["", (e) => e.id === "pinhole"], ["Cameras", (e) => e.type !== "stereo" && e.id !== "pinhole"],
+  ["Stereo cameras", (e) => e.type === "stereo"]]) {
+  const parent = group ? camSel.appendChild(Object.assign(document.createElement("optgroup"), { label: group })) : camSel;
+  for (const e of entries.filter(filter)) parent.appendChild(new Option(e.label + (e.type === "stereo" ? ` (${e.baseline_mm} mm)` : ""), entries.indexOf(e)));
+}
+const camCache = new Map();
+async function loadCam(name) {
+  if (!name) return PINHOLE;
+  if (!camCache.has(name)) camCache.set(name, await (await fetch(`cameras/${name}.json`)).json());
+  return camCache.get(name);
+}
+const live = [new EyeOptics(renderer, SparkRenderer, depthScene), new EyeOptics(renderer, SparkRenderer, depthScene)];
+const capt = [new EyeOptics(renderer, SparkRenderer, depthScene), new EyeOptics(renderer, SparkRenderer, depthScene)];
+const PREVIEW_W = 320;  // CSS px per eye in the preview block
+let entry = entries[0], camJson = [PINHOLE], eyeMode = "left", previewW = 320, lensOn = true;
+const eyeCams = [PINHOLE, PINHOLE];
+let liveKey = "";
+function liveWidth(k) {  // the image width the live view needs (device pixels, at most 1920)
+  const dpr = Math.min(devicePixelRatio, 2), n = usedEyes().length, c = eyeCams[k];
+  return Math.round(PREVIEW_W * dpr);  // the preview block, bottom right
+}
+function configureLive() {  // (re)build the live optics when the view size, camera or settings change
+  const widths = [0, 1].map(liveWidth), key = JSON.stringify([widths, previewW, eyeCams.map((c) => c.sensor)]) + entry.id + lensOn;
+  if (key === liveKey) return;
+  liveKey = key;
+  for (const k of [0, 1]) live[k].setCamera(eyeCams[k], previewW, widths[k]);
+}
+const usedEyes = () => (entry.type === "stereo" ? (eyeMode === "both" ? [0, 1] : [eyeMode === "right" ? 1 : 0]) : [0]);
+async function applyCamera() {
+  entry = entries[Number(camSel.value)];
+  eyeMode = document.getElementById("eyeSel").value;
+  previewW = Number(document.getElementById("resSel").value);
+  lensOn = document.getElementById("lensChk").checked;
+  document.getElementById("eyeRow").style.display = entry.type === "stereo" ? "grid" : "none";
+  const names = [entry.eyes.left, entry.eyes.right ?? entry.eyes.left];
+  camJson = await Promise.all(names.map(loadCam));
+  // eye poses: the right eye at the module's translation, in the left eye's frame (OpenCV x right, y down, z ahead)
+  const t = entry.right_translation_m ?? [0, 0, 0];
+  eyes[1].position.set(t[0], -t[1], -0.04 - t[2]);
+  for (const k of [0, 1]) {
+    const cam = lensOn ? camJson[k] : { ...camJson[k], blur: null, map: identityMap(camJson[k]) };
+    eyeCams[k] = cam;
+    capt[k].setCamera(cam, cam.blur?.levels?.["640"] ? 640 : previewW, Math.min(cam.sensor[0], 1280));
+  }
+  configureLive();
+  const c = camJson[0], b = c.blur?.levels?.[String(previewW)];
+  document.getElementById("camInfo").innerHTML = [
+    `sensor ${c.sensor[0]} × ${c.sensor[1]}${c.mono ? ", mono" : ""}`,
+    `${c.render.vfov_deg.toFixed(1)}° vertical render field`,
+    c.f_number ? `f/${c.f_number}, ${c.focal_mm} mm, focus ${c.focus_m != null ? c.focus_m + " m" : "∞"}` : "no lens",
+    entry.type === "stereo" ? `stereo baseline ${entry.baseline_mm} mm, ${entry.output}` : "",
+    b ? `PSF ${b.size}×${b.size} px, ${b.rank} basis kernels (${(b.relative_error * 100).toFixed(0)}% approx. error)` : "",
+  ].filter(Boolean).join("<br>");
+}
+function identityMap(c) {  // the camera's field of view without distortion (a pinhole of the same size)
+  const n = [9, 7], d = [];
+  for (let j = 0; j < n[1]; j++) for (let i = 0; i < n[0]; i++) {
+    const x = ((i / (n[0] - 1)) * c.sensor[0] - 0.5 - c.intrinsics.cx) / c.intrinsics.fx;
+    const y = ((j / (n[1] - 1)) * c.sensor[1] - 0.5 - c.intrinsics.cy) / c.intrinsics.fy;
+    d.push(x / c.render.tan_x, y / c.render.tan_y);
+  }
+  const b = new Uint8Array(new Float32Array(d).buffer);
+  let s = ""; for (const x of b) s += String.fromCharCode(x);
+  return { size: n, data: btoa(s) };
+}
+for (const id of ["camSel", "eyeSel", "resSel", "lensChk"]) document.getElementById(id).addEventListener("change", () => applyCamera());
+// default: a colour stereo camera (the ZED X 2.2 mm module; its eyes are RGB), else the first colour stereo module
+{
+  const colour = (e) => e.type === "stereo" && !/mono|ir|depth/i.test(`${e.eyes.left} ${e.label}`);
+  const i = entries.findIndex((e) => e.type === "stereo" && e.id === "stereolabs/zed-x/2.2mm");
+  camSel.value = String(i >= 0 ? i : Math.max(0, entries.findIndex(colour)));
+}
+await applyCamera();
+
+// start where the view is good: the robot faces the kitchen island and the stove
+const st = meta.start ?? { x: meta.spawn.x, z: meta.spawn.z, heading: 0, tilt: -0.2 };
+robot.position.set(st.x, 0, st.z);
+let heading = st.heading, tilt = st.tilt;
+
+// --- input: keyboard and the on-screen keys (both light up the keys on screen)
+const keys = new Set();
+const modalOpen = () => [...document.querySelectorAll(".modal")].some((m) => m.classList.contains("open"));
+const keyEl = (code) => document.querySelector(`.key[data-code="${code === "ShiftRight" ? "ShiftLeft" : code}"]`);
+function showKey(code, down) {
+  const k = keyEl(code);
+  if (k) k.classList.toggle("down", down);
+}
+function flashKey(code) { showKey(code, true); setTimeout(() => showKey(code, keys.has(code)), 140); }
+function nextCamera(back = false) {
+  const n = camSel.options.length, i = camSel.selectedIndex;
+  camSel.selectedIndex = (i + (back ? n - 1 : 1)) % n;
+  applyCamera();
+}
+function action(code, shift) {  // the one-shot keys
+  if (code === "KeyC") nextCamera(shift);
+  if (code === "Space") capture();
+  if (code === "KeyH") toggleUI();
+  if (code === "KeyM") overlay.visible = !overlay.visible;
+}
+const DRIVE = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight"]);
+addEventListener("keydown", (e) => {
+  if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
+  if (e.key === "Escape" || e.key === "?") {  // close what is open, else the shortcuts
+    e.preventDefault();
+    if (viewer.classList.contains("open")) closeViewer();
+    else toggleHelp();
+    return;
+  }
+  if (viewer.classList.contains("open")) return;  // the viewer's own keys (below)
+  if (modalOpen()) return;
+  if (e.code === "Space") e.preventDefault();
+  if (DRIVE.has(e.code)) { keys.add(e.code); showKey(e.code, true); return; }
+  if (!e.repeat && ["KeyC", "Space", "KeyM", "KeyH"].includes(e.code)) { action(e.code, e.shiftKey); flashKey(e.code); }
+});
+addEventListener("keyup", (e) => { keys.delete(e.code); showKey(e.code, false); });
+addEventListener("blur", () => { for (const c of keys) showKey(c, false); keys.clear(); });
+for (const k of document.querySelectorAll(".key")) {  // hold to drive; tap for the one-shot keys
+  const code = k.dataset.code;
+  if (DRIVE.has(code)) {
+    const up = () => { keys.delete(code); showKey(code, false); };
+    k.addEventListener("pointerdown", (e) => { e.preventDefault(); k.setPointerCapture(e.pointerId); keys.add(code); showKey(code, true); });
+    k.addEventListener("pointerup", up); k.addEventListener("pointercancel", up); k.addEventListener("lostpointercapture", up);
+  } else {
+    k.addEventListener("click", () => { action(code, false); flashKey(code); });
+  }
+}
+const helpEl = document.getElementById("help");
+function toggleHelp() { helpEl.classList.toggle("open"); if (helpEl.classList.contains("open")) document.exitPointerLock?.(); }
+document.getElementById("helpBtn").onclick = toggleHelp;
+document.getElementById("helpClose").onclick = () => helpEl.classList.remove("open");
+helpEl.addEventListener("click", (e) => { if (e.target === helpEl) helpEl.classList.remove("open"); });
+setTimeout(() => document.getElementById("hint").classList.add("gone"), 7000);
+const canvas = renderer.domElement;
+canvas.addEventListener("click", () => { document.getElementById("hint").classList.add("gone"); canvas.requestPointerLock?.(); });
+let dragging = false;
+canvas.addEventListener("mousedown", () => (dragging = true));
+addEventListener("mouseup", () => (dragging = false));
+addEventListener("mousemove", (e) => {
+  if (document.pointerLockElement !== canvas && !dragging) return;
+  heading -= e.movementX * 0.0025;
+  tilt = THREE.MathUtils.clamp(tilt - e.movementY * 0.0025, -1.2, 0.8);
+});
+
+// --- drawing an eye's image into a screen rectangle
+const quadScene = new THREE.Scene();
+// the eye images already hold sRGB values: copy them as they are (no colour conversion)
+const quadMat = new THREE.ShaderMaterial({
+  vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+  uniforms: { map: { value: null }, encode: { value: 0 } },
+  fragmentShader: "uniform sampler2D map; uniform float encode; varying vec2 vUv; void main() { vec3 c = texture2D(map, vUv).rgb;" +
+    " gl_FragColor = vec4(encode > 0.5 ? pow(max(c, 0.0), vec3(1.0 / 2.2)) : c, 1.0); }",
+  depthTest: false, depthWrite: false,
+});
+quadScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), quadMat));
+const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+function blit(tex, x, y, w, h, encode = 0) {  // CSS pixels, y from the top; encode: the texture decodes to linear
+  const H = renderer.domElement.clientHeight;
+  renderer.setViewport(x, H - y - h, w, h);
+  renderer.setScissor(x, H - y - h, w, h);
+  renderer.setScissorTest(true);
+  quadMat.uniforms.map.value = tex;
+  quadMat.uniforms.encode.value = encode;
+  renderer.render(quadScene, quadCam);
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, innerWidth, innerHeight);
+}
+function fitRect(aspect, x, y, w, h) {  // largest rectangle of this aspect inside (x, y, w, h)
+  let rw = w, rh = w / aspect;
+  if (rh > h) { rh = h; rw = h * aspect; }
+  return [x + (w - rw) / 2, y + (h - rh) / 2, rw, rh];
+}
+
+// --- capture: what the camera records (640 px, through the lens) + depth + poses -> zip
+const frames = [];
+let recording = false, capturing = false, nextId = 0;
+async function capture() {
+  if (capturing) return;
+  capturing = true;
+  try {
+    robot.updateMatrixWorld(true);
+    const shots = [];
+    for (const k of usedEyes()) {
+      const o = capt[k];
+      // Spark sorts splats for a new view in a worker: render until the sort has caught up
+      for (let i = 0; i < 3; i++) { o.render(scene, eyes[k].matrixWorld, [robot]); await new Promise((r) => requestAnimationFrame(r)); }
+      o.render(scene, eyes[k].matrixWorld, [robot]);
+      const { rgba, depth } = await o.read();
+      const [w, h] = o.out;
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      const g = c.getContext("2d"); const im = g.createImageData(w, h);
+      const dflip = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) {
+        im.data.set(rgba.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4);
+        dflip.set(depth.subarray((h - 1 - y) * w, (h - y) * w), y * w);
+      }
+      for (let p = 3; p < im.data.length; p += 4) im.data[p] = 255;
+      g.putImageData(im, 0, 0);
+      const ci = o.cam.intrinsics, s = w / o.cam.sensor[0];
+      shots.push({ eye: k === 0 ? "left" : "right", canvas: c, depth: dflip, w, h,
+        K: [[ci.fx * s, 0, (ci.cx + 0.5) * s - 0.5], [0, ci.fy * s, (ci.cy + 0.5) * s - 0.5], [0, 0, 1]],
+        distortion: o.cam.distortion, camera_to_world: eyes[k].matrixWorld.toArray() });
+    }
+    const n = String(nextId++).padStart(5, "0");
+    frames.push({ name: n, camera: entry.id, label: entry.label + (entry.type === "stereo" ? " (stereo)" : ""), lens: lensOn, robot: { x: robot.position.x, z: robot.position.z, heading, tilt },
+      eyes: shots.map((s) => ({ eye: s.eye, image: `images/${n}_${s.eye}.png`, depth: `depth/${n}_${s.eye}.f32`,
+        width: s.w, height: s.h, K: s.K, distortion: s.distortion, camera_to_world: s.camera_to_world,
+        png: s.canvas.toDataURL("image/png"), depthData: s.depth })) });
+    // bottom-left: what was just captured
+    const lv = document.getElementById("lastView"), TW = 260 / shots.length;
+    lv.width = 260; lv.height = Math.round(TW * shots[0].h / shots[0].w);
+    shots.forEach((s, i) => lv.getContext("2d").drawImage(s.canvas, TW * i, 0, TW, lv.height));
+    const last = document.getElementById("last");
+    last.style.display = "block";
+    last.classList.add("flash");
+    setTimeout(() => last.classList.remove("flash"), 150);
+    downloaded = false;
+    updateCount();
+    renderReview();
+  } finally {
+    capturing = false;
+  }
+}
+// --- review: thumbnails, a large view with depth, delete
+const reviewEl = document.getElementById("review"), grid = document.getElementById("grid"), viewer = document.getElementById("viewer");
+let viewing = -1;
+function updateCount() {
+  document.getElementById("reviewTitle").textContent = `Captures · ${frames.length}`;
+  const last = frames[frames.length - 1];
+  document.getElementById("lastLabel").textContent = last
+    ? `last capture · ${frames.length} frame${frames.length > 1 ? "s" : ""} · ${last.eyes[0].width}×${last.eyes[0].height}` : "no captures";
+  if (!frames.length) document.getElementById("last").style.display = "none";
+}
+const camLabel = (f) => f.label ?? f.camera;
+function renderReview() {
+  grid.replaceChildren(...frames.map((f, i) => {
+    const card = document.createElement("div"); card.className = "card";
+    const img = new Image(); img.src = f.eyes[0].png; img.alt = `frame ${f.name}`; img.onclick = () => openViewer(i);
+    const meta = document.createElement("div"); meta.className = "meta";
+    meta.textContent = `${f.name} · ${camLabel(f)}`; meta.title = meta.textContent;
+    const acts = document.createElement("div"); acts.className = "acts";
+    const btn = (cls, text, label, fn) => Object.assign(document.createElement("button"),
+      { className: cls, type: "button", textContent: text, title: label, ariaLabel: label, onclick: fn });
+    acts.append(btn("dl", "↓", `Download frame ${f.name} (.zip)`, () => downloadFrames([f], `frame_${f.name}.zip`)),
+      btn("del", "×", `Delete frame ${f.name}`, () => deleteFrame(i)));
+    card.append(img, meta, acts);
+    return card;
+  }));
+  document.getElementById("dl").disabled = document.getElementById("clearAll").disabled = !frames.length;
+  if (!frames.length) grid.replaceChildren(Object.assign(document.createElement("div"), { className: "note", textContent: "No captures yet: press Space to capture a frame, or Record to capture 4 per second." }));
+}
+function deleteFrame(i) {
+  frames.splice(i, 1);
+  updateCount();
+  renderReview();
+  if (viewer.classList.contains("open")) frames.length ? openViewer(Math.min(i, frames.length - 1)) : closeViewer();
+}
+function depthCanvas(e) {  // depth as a grey image: near = light, far = dark (0.2 to 6 m, log scale)
+  const c = document.createElement("canvas"); c.width = e.width; c.height = e.height;
+  const g = c.getContext("2d"), im = g.createImageData(e.width, e.height);
+  for (let k = 0; k < e.depthData.length; k++) {
+    const z = e.depthData[k];
+    const v = z > 0 ? 255 * (1 - Math.min(1, Math.max(0, Math.log(z / 0.2) / Math.log(6 / 0.2)))) : 0;
+    im.data[4 * k] = im.data[4 * k + 1] = im.data[4 * k + 2] = v; im.data[4 * k + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  c.setAttribute("aria-label", "depth");
+  return c;
+}
+function openViewer(i) {
+  viewing = i;
+  const f = frames[i];
+  const pics = [];
+  for (const e of f.eyes) { const img = new Image(); img.src = e.png; img.alt = `${e.eye} image`; pics.push(img, depthCanvas(e)); }
+  const pv = document.getElementById("viewerPics");
+  pv.style.gridTemplateColumns = `repeat(${pics.length}, minmax(0, 1fr))`;
+  pv.replaceChildren(...pics);
+  document.getElementById("viewerCap").textContent = `frame ${f.name} (${i + 1} of ${frames.length}) · ${camLabel(f)} · ` +
+    `${f.eyes.map((e) => e.eye).join(" + ")} · ${f.eyes[0].width}×${f.eyes[0].height} · lens ${f.lens ? "on" : "off"} · image and depth (light = near)`;
+  const files = [];
+  const fileBtn = (label, name, bytes, type) => Object.assign(document.createElement("button"),
+    { type: "button", textContent: `↓ ${label}`, title: name, onclick: () => save(new Blob([bytes], { type }), name.split("/").pop()) });
+  for (const e of f.eyes) {
+    files.push(fileBtn(`${e.eye} image (PNG)`, e.image, pngBytes(e), "image/png"),
+      fileBtn(`${e.eye} depth (float32)`, e.depth, new Uint8Array(e.depthData.buffer.slice(0)), "application/octet-stream"));
+  }
+  files.push(fileBtn("pose (JSON)", `pose_${f.name}.json`, strToU8(JSON.stringify(poseJson([f]), null, 1)), "application/json"),
+    fileBtn("all (.zip)", `frame_${f.name}.zip`, zipOf([f]), "application/zip"));
+  document.getElementById("viewerFiles").replaceChildren(...files);
+  viewer.classList.add("open");
+  document.exitPointerLock?.();
+}
+function closeViewer() { viewer.classList.remove("open"); viewing = -1; }
+let uiHidden = false;
+function toggleUI() { uiHidden = !uiHidden; document.body.classList.toggle("hide-ui", uiHidden); }
+document.getElementById("clearAll").onclick = () => { frames.length = 0; updateCount(); renderReview(); };
+updateCount();
+renderReview();
+document.getElementById("vClose").onclick = closeViewer;
+document.getElementById("vDel").onclick = () => deleteFrame(viewing);
+document.getElementById("vPrev").onclick = () => frames.length && openViewer((viewing - 1 + frames.length) % frames.length);
+document.getElementById("vNext").onclick = () => frames.length && openViewer((viewing + 1) % frames.length);
+viewer.addEventListener("click", (e) => { if (e.target === viewer) closeViewer(); });
+addEventListener("keydown", (e) => {
+  if (!viewer.classList.contains("open")) return;
+  if (e.key === "ArrowLeft") document.getElementById("vPrev").click();
+  if (e.key === "ArrowRight") document.getElementById("vNext").click();
+  if (e.key === "Delete") deleteFrame(viewing);
+});
+addEventListener("beforeunload", (e) => { if (frames.length && !downloaded) { e.preventDefault(); e.returnValue = ""; } });
+let downloaded = false;
+
+document.getElementById("rec").onclick = () => {
+  recording = !recording;
+  const b = document.getElementById("rec");
+  b.classList.toggle("on", recording);
+  b.lastChild.textContent = recording ? "Stop" : "Record";
+  document.getElementById("recDot").hidden = !recording;
+};
+
+// --- downloads: everything, one frame, or one file
+const pngBytes = (e) => Uint8Array.from(atob(e.png.split(",")[1]), (ch) => ch.charCodeAt(0));
+const poseJson = (list) => ({
+  units: "meters", frame: "three.js world: y up, floor at y = 0; camera_to_world column-major, camera looks along -z",
+  depth: "float32, row-major from the top row, metres along the camera axis, 0 where no surface", source: meta.source,
+  frames: list.map((f) => ({ ...f, eyes: f.eyes.map(({ png, depthData, ...rest }) => rest) })),
+});
+function zipOf(list) {
+  const files = {};
+  for (const f of list) for (const e of f.eyes) { files[e.image] = pngBytes(e); files[e.depth] = new Uint8Array(e.depthData.buffer.slice(0)); }
+  files["poses.json"] = strToU8(JSON.stringify(poseJson(list), null, 1));
+  return zipSync(files, { level: 0 });
+}
+function save(blob, name) {
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement("a"), { href: url, download: name }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+function downloadFrames(list, name) { save(new Blob([zipOf(list)], { type: "application/zip" }), name); }
+document.getElementById("dl").onclick = () => {
+  if (!frames.length) return;
+  downloadFrames(frames, "robot_kitchen_dataset.zip");
+  downloaded = true;
+};
+
+window.__demo = { THREE, robot, overlay, splat, meta, keys, live, capt, applyCamera, frames };  // for scripted checks
+// --- loop
+const clock = new THREE.Clock();
+const stats = document.getElementById("stats");
+let recAcc = 0, fps = 0, fpsAcc = 0, fpsN = 0, frameNo = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  fpsAcc += clock.elapsedTime >= 0 ? dt : 0; fpsN++;
+  if (fpsAcc > 0.5) { fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
+  const fwd = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
+  const side = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
+  const speed = (keys.has("ShiftLeft") || keys.has("ShiftRight") ? 1.4 : 0.7) * dt / Math.max(1, Math.hypot(fwd, side));
+  const sh = Math.sin(heading), ch = Math.cos(heading);  // robot forward = (-sin, -cos), right = (cos, -sin)
+  const nx = robot.position.x + (-sh * fwd + ch * side) * speed;
+  const nz = robot.position.z + (-ch * fwd - sh * side) * speed;
+  if (fits(nx, robot.position.z)) robot.position.x = nx;  // slide along walls
+  if (fits(robot.position.x, nz)) robot.position.z = nz;
+  robot.rotation.y = heading;
+  head.rotation.x = tilt;
+  robot.updateMatrixWorld(true);
+
+  if (recording && (recAcc += dt) > 0.25) { recAcc = 0; capture(); }
+  // keep the capture renderers warm (every 20th frame), so a capture does not wait for a first sort
+  if (!capturing && (frameNo = (frameNo + 1) % 20) === 0) for (const k of usedEyes()) capt[k].render(scene, eyes[k].matrixWorld, [robot]);
+
+  renderer.setClearColor(0x101214, 1);
+  renderer.clear();
+  const ids = usedEyes();
+  const W = innerWidth, H = innerHeight;
+  // main view: the robot's driving view, a full-resolution pinhole
+  fullEye.fov = 70; fullEye.aspect = W / H; fullEye.updateProjectionMatrix();
+  eyes[0].matrixWorld.decompose(fullEye.position, fullEye.quaternion, fullEye.scale);
+  robot.visible = false;
+  renderer.render(scene, fullEye);
+  robot.visible = true;
+  // bottom right: the selected camera through its lens (stereo: both eyes side by side); H hides it with the UI
+  if (!uiHidden) {
+  const texs = ids.map((k) => live[k].render(scene, eyes[k].matrixWorld, [robot]));
+  const a = live[ids[0]].out[0] / live[ids[0]].out[1], bh = PREVIEW_W / a, gap = 4;
+  const bw = PREVIEW_W * ids.length + gap * (ids.length - 1);
+  texs.forEach((t, i) => blit(t, W - 16 - bw + i * (PREVIEW_W + gap), H - 16 - bh, PREVIEW_W, bh));
+  insetFrameRect(bw, bh);
+  // the captures strip fills the space between the bottom-left block and the preview
+  const root = document.documentElement.style, lw = document.getElementById("left").offsetWidth;
+  const sl = `${16 + lw + 14}px`, sr = `${16 + bw + 14}px`;
+  if (root.getPropertyValue("--strip-left") !== sl) root.setProperty("--strip-left", sl);
+  if (root.getPropertyValue("--strip-right") !== sr) root.setProperty("--strip-right", sr);
+  }
+  document.getElementById("insetLabel").textContent =
+    `${entry.label}${ids.length > 1 ? " · left | right" : ""} · C: next camera`;
+  stats.textContent = `${fps.toFixed(0)} fps · ${frames.length} frame${frames.length === 1 ? "" : "s"}`;
+});
+function insetFrameRect(w, h) {
+  const f = document.getElementById("insetFrame");
+  f.style.width = `${w}px`; f.style.height = `${h}px`;
+}
+addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); configureLive(); });
+</script>
+</body>
+</html>

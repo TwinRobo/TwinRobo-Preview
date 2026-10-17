@@ -3,12 +3,12 @@
 Drives a running TwinRobo Studio (its HTTP API) and saves what the Studio shows, so the
 static site needs no server:
 
-- ``site/data/<scene>/scene.json``, ``scene.bin.gz``, ``tex/<id>.webp``, ``poses.json`` +
+- ``site/vla/data/<scene>/scene.json``, ``scene.bin.gz``, ``tex/<id>.webp``, ``poses.json`` +
   ``poses.bin``: the 3D scene (geometry, textures and per-frame poses) for the three.js panel;
-- ``site/data/<scene>/<camera>/<config>/{image,diff,depth}.mp4``: every frame of the
+- ``site/vla/data/<scene>/<camera>/<config>/{image,diff,depth}.mp4``: every frame of the
   demo through that camera config (H.264, 20 fps); ``diff`` is ``|camera - pinhole| x 10``
   (camera twins only), ``depth`` only for cameras that output depth (RealSense);
-- ``site/data/<scene>/meta.json`` and ``site/data/manifest.json``: what the page lists.
+- ``site/vla/data/<scene>/meta.json`` and ``site/vla/data/manifest.json``: what the page lists.
 
     python -m twinrobo_viewer --port 8791 --demos ... --robocasa ...   # a Studio to bake from
     python tools/bake.py --studio http://127.0.0.1:8791 --scene libero
@@ -34,7 +34,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "site" / "data"
+DATA = ROOT / "site" / "vla" / "data"
 FPS = 20  # the demos' control rate; the Studio plays them at this rate too
 WIDTH = 640  # video width (height keeps the camera's aspect)
 TEXTURE_MAX = 1024  # 3D-panel textures: longest side (WebP)
@@ -332,7 +332,7 @@ def main():
     ap.add_argument("--studio", default="http://127.0.0.1:8791", help="a running TwinRobo Studio")
     ap.add_argument("--scene", choices=sorted(SCENES), action="append")
     ap.add_argument("--config", action="append", help="only these camera configs (debugging)")
-    ap.add_argument("--manifest", action="store_true", help="write site/data/manifest.json")
+    ap.add_argument("--manifest", action="store_true", help="write site/vla/data/manifest.json")
     ap.add_argument("--compact", action="store_true", help="convert older bakes to the formats")
     args = ap.parse_args()
     if shutil.which("ffmpeg") is None:
