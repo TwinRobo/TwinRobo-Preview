@@ -106,7 +106,8 @@ site/capture/
 
 The scripts in `tools/capture/` make every file above. Training needs a CUDA GPU and
 [gsplat](https://github.com/nerfstudio-project/gsplat) 1.5; the camera export needs
-TwinRobo-Core (and DeepLens) for the PSF banks. All of them are seeded.
+TwinRobo-Core v0.1.0 (and DeepLens) for the PSF banks: later versions may change the API and
+not run here. All of them are seeded.
 
 ```bash
 cd tools/capture
